@@ -1,0 +1,32 @@
+# claude-signal
+
+A menu-bar traffic light for Claude Code state on macOS.
+
+- 🔵 breathing blue — Claude is working
+- 🟡 flashing yellow — needs your permission
+- 🔴 flashing red — error (e.g. network down while working)
+- 🟢 steady green — done, and you've stepped away
+- ⚫️ off — your turn / idle
+
+## Install
+```bash
+bash hooks/install.sh                 # register Claude Code hooks
+bash scripts/install-launchagent.sh   # build + auto-start at login
+```
+
+## Develop
+```bash
+swift test                            # core unit tests
+bash hooks/tests/test-on-event.sh     # hook script tests
+swift run ClaudeSignal --simulate working,done away   # headless resolution check
+swift run ClaudeSignal                # run the app in the foreground
+```
+
+## Uninstall
+```bash
+bash hooks/uninstall.sh
+launchctl unload "$HOME/Library/LaunchAgents/com.claudesignal.agent.plist"
+```
+
+See `docs/superpowers/specs/2026-05-30-claude-signal-design.md` for the full design.
+Roadmap: Touch Bar (Phase 2) and notch island (Phase 3).
