@@ -26,6 +26,8 @@ swift run ClaudeSignal                # run the app in the foreground
 ```bash
 bash hooks/uninstall.sh
 launchctl unload "$HOME/Library/LaunchAgents/com.claudesignal.agent.plist"
+rm -f "$HOME/Library/LaunchAgents/com.claudesignal.agent.plist"
+rm -f "$HOME/.local/bin/claude-signal"
 ```
 
 See `docs/superpowers/specs/2026-05-30-claude-signal-design.md` for the full design.

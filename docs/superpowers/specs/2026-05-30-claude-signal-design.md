@@ -185,15 +185,13 @@ aggregate = 🟡 → light is yellow (the most useful thing to surface is "somet
 ## 8. Red (error) detection — deliberately conservative
 
 Claude Code has **no clean error hook**, so:
-- **v1 trigger:** the daemon does a light periodic reachability check (e.g. `api.anthropic.com`).
-  Unreachable *while a session is working* → 🔴. Covers the "断网 / network down" case.
+- **v1 trigger:** the daemon watches general network reachability via `NWPathMonitor`. If there is no satisfied network path *while a session is working* → 🔴. (More conservative than per-host checks: a captive portal or dead-internet-but-connected-Wi-Fi case won't trigger red.)
 - Generic tool/command failures (a bash command exiting non-zero) are **intentionally not red** —
   they're common and usually benign.
 - Richer hook-based failure signals are a future enhancement. Rarely seeing red is the goal.
 
 > **红灯（出错）检测——有意保守：** Claude Code **没有干净的"出错"hook**，所以：
-> **v1 触发条件**——后台进程定期做一次轻量的可达性检查（如 ping `api.anthropic.com`），若在
-> *有会话正在工作时*不可达 → 🔴，覆盖"断网"这种情况；普通的工具/命令失败（某个 bash 命令返回
+> **v1 触发条件**——后台进程通过 `NWPathMonitor` 监听整体网络可达性；若在*有会话正在工作时*没有任何可用网络路径 → 🔴。（比按主机探测更保守：连着 Wi-Fi 但无网/门户认证的情况不会触发红灯。）普通的工具/命令失败（某个 bash 命令返回
 > 非零）**有意不算红灯**——它们很常见且通常无害；更丰富的基于 hook 的失败信号留作未来增强。
 > 目标就是：很少见到红灯。
 

@@ -22,7 +22,7 @@ now="$(date +%s)"
 write_state() {
   local state="$1"
   jq -n --arg sid "$sid" --arg st "$state" --arg cwd "$cwd" --argjson now "$now" \
-    '{session_id:$sid, state:$st, updated_at:$now, cwd:$cwd, source:"claude"}' \
+    '{session_id:$sid, state:$st, updated_at:$now, cwd:($cwd | if . == "" then null else . end), source:"claude"}' \
     > "$file.tmp" && mv "$file.tmp" "$file" || rm -f "$file.tmp"
 }
 
