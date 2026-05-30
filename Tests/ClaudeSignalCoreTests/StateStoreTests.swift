@@ -20,11 +20,12 @@ final class StateStoreTests: XCTestCase {
     }
 
     func testLoadsLiveSessions() throws {
-        try writeSession("a", .working, updatedAt: 1000)
+        // write out of order to prove the result is sorted by sessionId
         try writeSession("b", .done, updatedAt: 1000)
+        try writeSession("a", .working, updatedAt: 1000)
         let store = StateStore(directory: dir, staleThreshold: 300)
         let live = store.loadLiveSessions(now: 1100)
-        XCTAssertEqual(Set(live.map { $0.sessionId }), ["a", "b"])
+        XCTAssertEqual(live.map { $0.sessionId }, ["a", "b"])
     }
 
     func testDropsAndDeletesStale() throws {
@@ -43,6 +44,7 @@ final class StateStoreTests: XCTestCase {
         let store = StateStore(directory: dir, staleThreshold: 300)
         let live = store.loadLiveSessions(now: 1000)
         XCTAssertEqual(live.map { $0.sessionId }, ["ok"])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: dir.appendingPathComponent("junk.json").path))
     }
 
     func testMissingDirectoryReturnsEmpty() {
