@@ -33,9 +33,15 @@ check "Stop->done" "done" "$state"
 echo '{"hook_event_name":"SessionEnd","session_id":"s1"}' | bash "$SCRIPT"
 if [ -f "$TMP/sessions/s1.json" ]; then echo "FAIL - SessionEnd should remove file"; fail=1; else echo "ok  - SessionEnd removes file"; fi
 
-# Missing session_id -> no crash, no file
-echo '{"hook_event_name":"Stop"}' | bash "$SCRIPT"
-echo "ok  - missing session_id handled (exit $?)"
+# Missing session_id -> no crash, no file written
+before="$(find "$TMP/sessions" -type f 2>/dev/null | wc -l | tr -d ' ')"
+echo '{"hook_event_name":"Stop"}' | bash "$SCRIPT"; rc=$?
+after="$(find "$TMP/sessions" -type f 2>/dev/null | wc -l | tr -d ' ')"
+if [ "$rc" -eq 0 ] && [ "$before" = "$after" ]; then
+  echo "ok  - missing session_id handled (no file, exit 0)"
+else
+  echo "FAIL - missing session_id: exit=$rc files before=$before after=$after"; fail=1
+fi
 
 rm -rf "$TMP"
 exit $fail
