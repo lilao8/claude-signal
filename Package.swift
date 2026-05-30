@@ -4,6 +4,10 @@ import PackageDescription
 let package = Package(
     name: "ClaudeSignal",
     platforms: [.macOS(.v13)],
+    products: [
+        .library(name: "ClaudeSignalCore", targets: ["ClaudeSignalCore"]),
+        .executable(name: "ClaudeSignal", targets: ["ClaudeSignal"]),
+    ],
     targets: [
         .target(name: "ClaudeSignalCore"),
         .executableTarget(
