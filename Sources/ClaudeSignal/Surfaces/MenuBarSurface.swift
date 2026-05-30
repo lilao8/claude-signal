@@ -6,7 +6,7 @@ import ClaudeSignalCore
 final class MenuBarSurface: SignalSurface {
     private let statusItem: NSStatusItem
     private var timer: Timer?
-    private var current: DisplayState = .off
+    private var current: DisplayState?
 
     init() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -36,20 +36,27 @@ final class MenuBarSurface: SignalSurface {
 
     private func startTimer(period: TimeInterval, color: NSColor, ease: Bool) {
         let start = Date()
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
-            let t = Date().timeIntervalSince(start)
-            let phase = (t.truncatingRemainder(dividingBy: period)) / period  // 0..1
-            let a: Double
+        // Use Timer(...) + a single explicit run-loop registration in .common mode
+        // so the animation keeps running during menu tracking / window drags, and is
+        // registered exactly once (scheduledTimer would add a second .default registration).
+        let t = Timer(timeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
+            let elapsed = Date().timeIntervalSince(start)
+            let phase = (elapsed.truncatingRemainder(dividingBy: period)) / period  // 0..1
+            let alpha: Double
             if ease {
-                a = 0.35 + 0.65 * (0.5 - 0.5 * cos(2 * .pi * phase)) // smooth breathe
+                alpha = 0.35 + 0.65 * (0.5 - 0.5 * cos(2 * .pi * phase)) // smooth breathe
             } else {
-                a = phase < 0.5 ? 1.0 : 0.15                          // square flash
+                alpha = phase < 0.5 ? 1.0 : 0.15                         // square flash
             }
-            DispatchQueue.main.async {
-                self?.draw(alpha: a, color: color)
+            // The timer fires on the main run loop, so we are already on the main actor.
+            // assumeIsolated lets us call the @MainActor draw() without crossing a
+            // Sendable boundary (avoids capturing non-Sendable NSColor across actors).
+            MainActor.assumeIsolated {
+                self?.draw(alpha: alpha, color: color)
             }
         }
-        if let timer { RunLoop.main.add(timer, forMode: .common) }
+        RunLoop.main.add(t, forMode: .common)
+        timer = t
     }
 
     private func draw(alpha: Double, color: NSColor) {
