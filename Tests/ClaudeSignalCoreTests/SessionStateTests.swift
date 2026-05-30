@@ -11,6 +11,7 @@ final class SessionStateTests: XCTestCase {
         XCTAssertEqual(s.status, .working)
         XCTAssertEqual(s.updatedAt, 1780150000)
         XCTAssertEqual(s.cwd, "/p")
+        XCTAssertEqual(s.source, "claude")
     }
 
     func testDecodesWithoutOptionalFields() throws {
