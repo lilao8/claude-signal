@@ -21,7 +21,11 @@ final class AppController: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Render the initial state immediately rather than waiting one full interval.
         tick()
+        // pollTimer runs for the whole process lifetime and is intentionally never
+        // invalidated; the OS reclaims it at exit. [weak self] keeps it a safe no-op
+        // if the controller is ever torn down early.
         pollTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             // The timer fires on the main run loop, so we are already on the main actor.
             // assumeIsolated lets us call the @MainActor tick() without a Sendable crossing.
