@@ -2,6 +2,7 @@ import AppKit
 import ClaudeSignalCore
 
 /// Anything that can show the light. Phase 1 = menu bar; later = Touch Bar, notch.
+@MainActor
 protocol SignalSurface: AnyObject {
     func render(_ state: DisplayState)
 }
