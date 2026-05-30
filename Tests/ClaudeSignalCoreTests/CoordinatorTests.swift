@@ -5,8 +5,8 @@ private struct FakeIdle: IdleTimeProviding {
     let seconds: TimeInterval
     func idleSeconds() -> TimeInterval { seconds }
 }
-private final class FakeReach: ReachabilityChecking, @unchecked Sendable {
-    var reachable: Bool
+private struct FakeReach: ReachabilityChecking {
+    let reachable: Bool
     init(_ r: Bool) { reachable = r }
     func isReachable() -> Bool { reachable }
 }
@@ -55,5 +55,10 @@ final class CoordinatorTests: XCTestCase {
     func testNoSessionsShowsOff() {
         let c = makeCoordinator(idle: 1, reachable: false)
         XCTAssertEqual(c.computeDisplayState(now: 1000), .off)
+    }
+    func testPermissionShownEvenWhenNetworkDown() throws {
+        try write("a", .permission, 1000)
+        let c = makeCoordinator(idle: 1, reachable: false) // network down, but permission != working
+        XCTAssertEqual(c.computeDisplayState(now: 1000), .permission)
     }
 }
