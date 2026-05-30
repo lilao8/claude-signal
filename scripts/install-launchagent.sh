@@ -13,7 +13,9 @@ cp "$BIN_SRC" "$BIN_DST"
 PLIST_DIR="$HOME/Library/LaunchAgents"
 PLIST="$PLIST_DIR/com.claudesignal.agent.plist"
 mkdir -p "$PLIST_DIR"
-sed "s#__BINARY__#$BIN_DST#" "$ROOT/LaunchAgents/com.claudesignal.agent.plist.template" > "$PLIST"
+# Escape & (special in sed replacement) for safety; # is already our delimiter.
+ESCAPED_DST="${BIN_DST//&/\\&}"
+sed "s#__BINARY__#$ESCAPED_DST#" "$ROOT/LaunchAgents/com.claudesignal.agent.plist.template" > "$PLIST"
 
 launchctl unload "$PLIST" 2>/dev/null || true
 launchctl load "$PLIST"

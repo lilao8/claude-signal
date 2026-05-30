@@ -8,7 +8,11 @@
     <string>__BINARY__</string>
   </array>
   <key>RunAtLoad</key><true/>
-  <key>KeepAlive</key><true/>
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key><false/>
+  </dict>
+  <key>LimitLoadToSessionType</key><string>Aqua</string>
   <key>StandardErrorPath</key><string>/tmp/claude-signal.err.log</string>
   <key>StandardOutPath</key><string>/tmp/claude-signal.out.log</string>
 </dict>
