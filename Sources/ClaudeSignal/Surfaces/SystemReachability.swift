@@ -12,9 +12,10 @@ final class SystemReachability: ReachabilityChecking, @unchecked Sendable {
 
     init() {
         monitor.pathUpdateHandler = { [weak self] path in
-            self?.lock.lock()
-            self?.reachable = (path.status == .satisfied)
-            self?.lock.unlock()
+            guard let self else { return }
+            lock.lock()
+            reachable = (path.status == .satisfied)
+            lock.unlock()
         }
         monitor.start(queue: queue)
     }
