@@ -7,13 +7,15 @@ SETTINGS="${CLAUDE_SETTINGS:-$HOME/.claude/settings.json}"
 HOOK="$(cd "$(dirname "$0")" && pwd)/on-event.sh"
 EVENTS=(UserPromptSubmit PreToolUse PostToolUse Notification Stop SubagentStop SessionEnd)
 
+[ -x "$HOOK" ] || { echo "error: hook script not found or not executable: $HOOK" >&2; exit 1; }
 mkdir -p "$(dirname "$SETTINGS")"
-[ -f "$SETTINGS" ] || echo '{}' > "$SETTINGS"
+[ -f "$SETTINGS" ] && [ -s "$SETTINGS" ] || echo '{}' > "$SETTINGS"
 
-# Backup once.
-cp "$SETTINGS" "$SETTINGS.claude-signal.bak"
+# Backup once — keep the original pre-install snapshot, don't clobber it on re-runs.
+[ -f "$SETTINGS.claude-signal.bak" ] || cp "$SETTINGS" "$SETTINGS.claude-signal.bak"
 
 tmp="$(mktemp)"
+trap 'rm -f "$tmp"' EXIT
 jq --arg hook "$HOOK" --argjson events "$(printf '%s\n' "${EVENTS[@]}" | jq -R . | jq -s .)" '
   .hooks = (.hooks // {})
   | reduce $events[] as $e (.;
