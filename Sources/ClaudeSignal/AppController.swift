@@ -2,10 +2,10 @@ import AppKit
 import Foundation
 import ClaudeSignalCore
 
-/// Owns the surface + coordinator, polls state on a timer, renders.
+/// Owns the surfaces + coordinator, polls state on a timer, renders to every surface.
 @MainActor
 final class AppController: NSObject, NSApplicationDelegate {
-    private let surface = MenuBarSurface()
+    private let surfaces: [any SignalSurface]
     private let coordinator: Coordinator
     private var pollTimer: Timer?
 
@@ -17,6 +17,8 @@ final class AppController: NSObject, NSApplicationDelegate {
             presence: PresenceMonitor(threshold: 30, provider: SystemIdleTimeProvider()),
             reachability: SystemReachability()
         )
+        // Menu bar (universal) + Touch Bar (no-ops gracefully if unavailable).
+        surfaces = [MenuBarSurface(), TouchBarSurface()]
         super.init()
     }
 
@@ -37,6 +39,8 @@ final class AppController: NSObject, NSApplicationDelegate {
 
     private func tick() {
         let state = coordinator.computeDisplayState(now: Date().timeIntervalSince1970)
-        surface.render(state)
+        for surface in surfaces {
+            surface.render(state)
+        }
     }
 }
