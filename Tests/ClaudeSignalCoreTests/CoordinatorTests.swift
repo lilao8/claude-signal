@@ -28,8 +28,15 @@ final class CoordinatorTests: XCTestCase {
         Coordinator(
             store: StateStore(directory: dir, staleThreshold: 300),
             presence: PresenceMonitor(threshold: 30, provider: FakeIdle(seconds: idle)),
-            reachability: FakeReach(reachable)
+            reachability: FakeReach(reachable),
+            rateLimitStore: RateLimitStore(fileURL: dir.appendingPathComponent("ratelimit.json"))
         )
+    }
+
+    private func writeRateLimit(resetAt: TimeInterval) throws {
+        let f = dir.appendingPathComponent("ratelimit.json")
+        let data = try JSONEncoder().encode(RateLimitState(resetAt: resetAt))
+        try data.write(to: f)
     }
 
     func testWorkingPresentShowsWorking() throws {
@@ -60,5 +67,25 @@ final class CoordinatorTests: XCTestCase {
         try write("a", .permission, 1000)
         let c = makeCoordinator(idle: 1, reachable: false) // network down, but permission != working
         XCTAssertEqual(c.computeDisplayState(now: 1000), .permission)
+    }
+
+    func testActiveRateLimitForcesErrorEvenWhenWorking() throws {
+        try write("a", .working, 1000)
+        try writeRateLimit(resetAt: 2000)              // active: now 1000 < 2000
+        let c = makeCoordinator(idle: 1, reachable: true)
+        XCTAssertEqual(c.computeDisplayState(now: 1000), .error)
+    }
+
+    func testExpiredRateLimitDoesNotForceError() throws {
+        try write("a", .working, 1000)
+        try writeRateLimit(resetAt: 1000)              // expired: now 1000 >= 1000
+        let c = makeCoordinator(idle: 1, reachable: true)
+        XCTAssertEqual(c.computeDisplayState(now: 1000), .working)
+    }
+
+    func testNoRateLimitFileBehavesAsBefore() throws {
+        try write("a", .done, 1000)
+        let c = makeCoordinator(idle: 99, reachable: true)   // away → done shows
+        XCTAssertEqual(c.computeDisplayState(now: 1000), .done)
     }
 }

@@ -15,7 +15,9 @@ final class AppController: NSObject, NSApplicationDelegate {
         coordinator = Coordinator(
             store: StateStore(directory: base, staleThreshold: 300),
             presence: PresenceMonitor(threshold: 30, provider: SystemIdleTimeProvider()),
-            reachability: SystemReachability()
+            reachability: SystemReachability(),
+            rateLimitStore: RateLimitStore(fileURL: FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".claude-signal/ratelimit.json"))
         )
         // Menu bar (universal) + Touch Bar (no-ops gracefully if unavailable).
         surfaces = [MenuBarSurface(), TouchBarSurface()]
