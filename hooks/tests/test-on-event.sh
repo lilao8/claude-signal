@@ -43,5 +43,45 @@ else
   echo "FAIL - missing session_id: exit=$rc files before=$before after=$after"; fail=1
 fi
 
+# ---- usage-limit (StopFailure / rate_limit) ----
+
+# rate_limit StopFailure writes ratelimit.json with a future reset_at + preserved raw
+rm -f "$TMP/ratelimit.json"
+echo '{"hook_event_name":"StopFailure","session_id":"s1","error":"rate_limit","last_assistant_message":"You'"'"'ve hit your session limit · resets 1:10am (America/Toronto)"}' | bash "$SCRIPT"
+if [ -f "$TMP/ratelimit.json" ]; then
+  reset_at=$(jq -r '.reset_at' "$TMP/ratelimit.json")
+  raw=$(jq -r '.raw' "$TMP/ratelimit.json")
+  nowts=$(date +%s)
+  if [ "$reset_at" -gt "$nowts" ]; then echo "ok  - rate_limit writes future reset_at"; else echo "FAIL - reset_at not future: $reset_at vs $nowts"; fail=1; fi
+  case "$raw" in *"1:10am"*) echo "ok  - raw preserved" ;; *) echo "FAIL - raw not preserved: $raw"; fail=1 ;; esac
+else
+  echo "FAIL - ratelimit.json not written"; fail=1
+fi
+
+# non-rate_limit StopFailure does NOT write ratelimit.json
+rm -f "$TMP/ratelimit.json"
+echo '{"hook_event_name":"StopFailure","session_id":"s1","error":"max_output_tokens","last_assistant_message":"too long"}' | bash "$SCRIPT"
+if [ -f "$TMP/ratelimit.json" ]; then echo "FAIL - non-rate_limit should not write ratelimit.json"; fail=1; else echo "ok  - non-rate_limit ignored"; fi
+
+# normal activity deletes an existing ratelimit.json (extinguish ②)
+echo '{"reset_at":99999999999,"raw":"x"}' > "$TMP/ratelimit.json"
+echo '{"hook_event_name":"UserPromptSubmit","session_id":"s1"}' | bash "$SCRIPT"
+if [ -f "$TMP/ratelimit.json" ]; then echo "FAIL - activity should delete ratelimit.json"; fail=1; else echo "ok  - activity clears ratelimit"; fi
+
+# Stop also deletes ratelimit.json (extinguish ②)
+echo '{"reset_at":99999999999,"raw":"x"}' > "$TMP/ratelimit.json"
+echo '{"hook_event_name":"Stop","session_id":"s1"}' | bash "$SCRIPT"
+if [ -f "$TMP/ratelimit.json" ]; then echo "FAIL - Stop should delete ratelimit.json"; fail=1; else echo "ok  - Stop clears ratelimit"; fi
+
+# fallback: rate_limit with unparseable message uses sentinel reset_at
+rm -f "$TMP/ratelimit.json"
+echo '{"hook_event_name":"StopFailure","session_id":"s1","error":"rate_limit","last_assistant_message":"limit reached, try later"}' | bash "$SCRIPT"
+if [ -f "$TMP/ratelimit.json" ]; then
+  reset_at=$(jq -r '.reset_at' "$TMP/ratelimit.json")
+  if [ "$reset_at" -ge 99999999999 ]; then echo "ok  - unparseable rate_limit uses sentinel"; else echo "FAIL - expected sentinel, got $reset_at"; fail=1; fi
+else
+  echo "FAIL - fallback should still write ratelimit.json"; fail=1
+fi
+
 rm -rf "$TMP"
 exit $fail
