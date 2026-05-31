@@ -273,7 +273,10 @@ claude-signal/
 - **Phase 1 — Menu bar (MVP):** `NSStatusItem` dot with animations (breathing blue, flashing
   yellow/red, steady green), wired to the Coordinator, auto-start at login. **First shippable;
   works on both current and next Mac.**
-- **Phase 2 — Touch Bar:** persistent Control Strip item. Current Mac.
+- **Phase 2 — Touch Bar:** ✅ DONE. Persistent Control Strip item via the private DFRFoundation
+  API (dlopen/dlsym + `addSystemTrayItem:` + `DFRElementSetControlStripPresenceForIdentifier`),
+  verified on macOS 14.6 / 2019 MBP. Shares `LightAnimation` with the menu bar; degrades to a
+  no-op on Macs without a Touch Bar.
 - **Phase 3 — Notch island:** notch overlay window. Next Mac.
 - **Later/optional:** config UI (threshold, colors), sound ping, other agents (Codex), richer red.
 
@@ -283,7 +286,10 @@ claude-signal/
 > 整个"大脑"在完全不碰 AppKit 的情况下用 TDD 建好。
 > **阶段 1 — 菜单栏（MVP）：** `NSStatusItem` 小圆点 + 动画（呼吸蓝、闪黄/闪红、常亮绿），接到
 > Coordinator，开机自启。**第一个可交付版本；当前和未来的 Mac 都能用。**
-> **阶段 2 — Touch Bar：** 常驻 Control Strip 项目。用于当前 Mac。
+> **阶段 2 — Touch Bar：** ✅ 已完成。通过 DFRFoundation 私有 API（dlopen/dlsym +
+> `addSystemTrayItem:` + `DFRElementSetControlStripPresenceForIdentifier`）实现常驻 Control Strip
+> 项目，已在 macOS 14.6 / 2019 MBP 上验证。与菜单栏共用 `LightAnimation`；在没有 Touch Bar 的
+> Mac 上自动降级为无操作（no-op）。
 > **阶段 3 — 刘海灵动岛：** 刘海覆盖窗口。用于新 Mac。
 > **以后/可选：** 配置界面（阈值、颜色）、声音提示、其它 agent（Codex）、更丰富的红灯逻辑。
 

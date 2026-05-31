@@ -8,6 +8,9 @@ A menu-bar traffic light for Claude Code state on macOS.
 - 🟢 steady green — done, and you've stepped away
 - ⚫️ off — your turn / idle
 
+The same light shows in both the menu bar and (on Touch Bar Macs) the Control Strip.
+On Macs without a Touch Bar, the Touch Bar surface is a silent no-op and the menu bar works as usual.
+
 ## Install
 ```bash
 bash hooks/install.sh                 # register Claude Code hooks
@@ -31,4 +34,4 @@ rm -f "$HOME/.local/bin/claude-signal"
 ```
 
 See `docs/superpowers/specs/2026-05-30-claude-signal-design.md` for the full design.
-Roadmap: Touch Bar (Phase 2) and notch island (Phase 3).
+Roadmap: ✅ Touch Bar (Phase 2, Control Strip) — done. Next: notch island (Phase 3).
