@@ -8,6 +8,14 @@ final class TouchBarLightView: NSView {
     private var fillColor: NSColor = .clear
     private var fillAlpha: Double = 0
 
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true   // layer-backed: cheaper redraws for the ~30fps animation
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("not used") }
+
     func setLight(color: NSColor, alpha: Double) {
         fillColor = color
         fillAlpha = alpha
