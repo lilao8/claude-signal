@@ -43,5 +43,6 @@ final class RateLimitStoreTests: XCTestCase {
         try "not json".data(using: .utf8)!.write(to: file)
         let store = RateLimitStore(fileURL: file)
         XCTAssertNil(store.read(now: 1000))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: file.path))  // corrupt file preserved, not deleted
     }
 }
