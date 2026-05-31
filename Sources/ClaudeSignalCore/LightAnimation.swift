@@ -28,6 +28,14 @@ public enum LightAnimation {
         }
     }
 
+    /// Combined animation config for a state: the period to animate over and whether
+    /// to ease (breathe) vs. hard-switch (flash). Returns nil for steady states.
+    /// Lets surfaces avoid duplicating the `period`+`kind` derivation.
+    public static func config(for state: DisplayState) -> (period: TimeInterval, ease: Bool)? {
+        guard let period = period(for: state) else { return nil }
+        return (period, kind(for: state) == .breathe)
+    }
+
     /// Alpha (0...1) at a given elapsed time.
     /// `ease == true` → smooth breathe; `ease == false` → square flash.
     public static func alpha(elapsed: TimeInterval, period: TimeInterval, ease: Bool) -> Double {

@@ -24,19 +24,19 @@ final class MenuBarSurface: SignalSurface {
         timer?.invalidate(); timer = nil
 
         let color = Appearance.color(for: state)
-        // period == nil  <=>  steady state (off or done)
-        guard let period = LightAnimation.period(for: state) else {
+        // config == nil  <=>  steady state (off or done)
+        guard let config = LightAnimation.config(for: state) else {
             draw(alpha: state == .off ? 0 : 1, color: color)
             return
         }
-        let ease = LightAnimation.kind(for: state) == .breathe
-        startTimer(period: period, color: color, ease: ease)
+        startTimer(period: config.period, color: color, ease: config.ease)
     }
 
     private func startTimer(period: TimeInterval, color: NSColor, ease: Bool) {
         let start = Date()
-        // Timer(...) + a single .common registration so the animation keeps running
-        // during menu tracking, and is registered exactly once.
+        // Use Timer(...) + a single explicit RunLoop.main.add(forMode: .common) rather than
+        // Timer.scheduledTimer: scheduledTimer would ALSO register in .default mode, giving a
+        // duplicate registration. .common keeps the animation running during menu tracking too.
         let t = Timer(timeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
             let elapsed = Date().timeIntervalSince(start)
             let alpha = LightAnimation.alpha(elapsed: elapsed, period: period, ease: ease)

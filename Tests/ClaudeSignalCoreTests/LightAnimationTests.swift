@@ -30,4 +30,18 @@ final class LightAnimationTests: XCTestCase {
         XCTAssertEqual(LightAnimation.alpha(elapsed: 0.5, period: 1.0, ease: false), 0.15, accuracy: 0.0001)
         XCTAssertEqual(LightAnimation.alpha(elapsed: 0.75, period: 1.0, ease: false), 0.15, accuracy: 0.0001)
     }
+
+    func testConfigForEachState() {
+        XCTAssertNil(LightAnimation.config(for: .off))
+        XCTAssertNil(LightAnimation.config(for: .done))
+        let working = LightAnimation.config(for: .working)
+        XCTAssertEqual(working?.period, 1.8)
+        XCTAssertEqual(working?.ease, true)   // breathe
+        let permission = LightAnimation.config(for: .permission)
+        XCTAssertEqual(permission?.period, 1.0)
+        XCTAssertEqual(permission?.ease, false)  // flash
+        let error = LightAnimation.config(for: .error)
+        XCTAssertEqual(error?.period, 0.6)
+        XCTAssertEqual(error?.ease, false)   // flash
+    }
 }
