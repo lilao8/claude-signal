@@ -10,14 +10,14 @@ final class AppController: NSObject, NSApplicationDelegate {
     private var pollTimer: Timer?
 
     override init() {
-        let base = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude-signal/sessions")
+        let signalDir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".claude-signal")
+        let sessionsDir = signalDir.appendingPathComponent("sessions")
         coordinator = Coordinator(
-            store: StateStore(directory: base, staleThreshold: 300),
+            store: StateStore(directory: sessionsDir, staleThreshold: 300),
             presence: PresenceMonitor(threshold: 30, provider: SystemIdleTimeProvider()),
             reachability: SystemReachability(),
-            rateLimitStore: RateLimitStore(fileURL: FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent(".claude-signal/ratelimit.json"))
+            rateLimitStore: RateLimitStore(fileURL: signalDir.appendingPathComponent("ratelimit.json"))
         )
         // Menu bar (universal) + Touch Bar (no-ops gracefully if unavailable).
         surfaces = [MenuBarSurface(), TouchBarSurface()]

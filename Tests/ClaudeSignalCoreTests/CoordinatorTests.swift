@@ -76,6 +76,13 @@ final class CoordinatorTests: XCTestCase {
         XCTAssertEqual(c.computeDisplayState(now: 1000), .error)
     }
 
+    func testActiveRateLimitForcesErrorEvenWhenPermission() throws {
+        try write("a", .permission, 1000)
+        try writeRateLimit(resetAt: 2000)
+        let c = makeCoordinator(idle: 1, reachable: true)
+        XCTAssertEqual(c.computeDisplayState(now: 1000), .error)
+    }
+
     func testExpiredRateLimitDoesNotForceError() throws {
         try write("a", .working, 1000)
         try writeRateLimit(resetAt: 1000)              // expired: now 1000 >= 1000
