@@ -23,34 +23,25 @@ final class MenuBarSurface: SignalSurface {
         current = state
         timer?.invalidate(); timer = nil
 
-        switch Appearance.animation(for: state) {
-        case .none:
-            draw(alpha: state == .off ? 0 : 1, color: Appearance.color(for: state))
-        case .breathe:
-            startTimer(period: 1.8, color: Appearance.color(for: state), ease: true)
-        case .flash:
-            startTimer(period: state == .error ? 0.6 : 1.0,
-                       color: Appearance.color(for: state), ease: false)
+        let color = Appearance.color(for: state)
+        // period == nil  <=>  steady state (off or done)
+        guard let period = LightAnimation.period(for: state) else {
+            draw(alpha: state == .off ? 0 : 1, color: color)
+            return
         }
+        let ease = LightAnimation.kind(for: state) == .breathe
+        startTimer(period: period, color: color, ease: ease)
     }
 
     private func startTimer(period: TimeInterval, color: NSColor, ease: Bool) {
         let start = Date()
-        // Use Timer(...) + a single explicit run-loop registration in .common mode
-        // so the animation keeps running during menu tracking / window drags, and is
-        // registered exactly once (scheduledTimer would add a second .default registration).
+        // Timer(...) + a single .common registration so the animation keeps running
+        // during menu tracking, and is registered exactly once.
         let t = Timer(timeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
             let elapsed = Date().timeIntervalSince(start)
-            let phase = (elapsed.truncatingRemainder(dividingBy: period)) / period  // 0..1
-            let alpha: Double
-            if ease {
-                alpha = 0.35 + 0.65 * (0.5 - 0.5 * cos(2 * .pi * phase)) // smooth breathe
-            } else {
-                alpha = phase < 0.5 ? 1.0 : 0.15                         // square flash
-            }
-            // The timer fires on the main run loop, so we are already on the main actor.
-            // assumeIsolated lets us call the @MainActor draw() without crossing a
-            // Sendable boundary (avoids capturing non-Sendable NSColor across actors).
+            let alpha = LightAnimation.alpha(elapsed: elapsed, period: period, ease: ease)
+            // Timer fires on the main run loop; assumeIsolated avoids a Sendable crossing
+            // for the non-Sendable NSColor capture.
             MainActor.assumeIsolated {
                 self?.draw(alpha: alpha, color: color)
             }

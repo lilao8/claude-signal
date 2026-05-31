@@ -1,13 +1,14 @@
 import AppKit
 import ClaudeSignalCore
 
-/// Anything that can show the light. Phase 1 = menu bar; later = Touch Bar, notch.
+/// Anything that can show the light. Phase 1 = menu bar; Phase 2 = Touch Bar; later = notch.
 @MainActor
 protocol SignalSurface: AnyObject {
     func render(_ state: DisplayState)
 }
 
-/// Visual vocabulary for a DisplayState (shared by all surfaces).
+/// Color vocabulary for a DisplayState (shared by all surfaces).
+/// Animation timing lives in `ClaudeSignalCore.LightAnimation`.
 enum Appearance {
     static func color(for state: DisplayState) -> NSColor {
         switch state {
@@ -16,14 +17,6 @@ enum Appearance {
         case .permission: return .systemYellow
         case .error:      return .systemRed
         case .done:       return .systemGreen
-        }
-    }
-    enum Animation { case none, breathe, flash }
-    static func animation(for state: DisplayState) -> Animation {
-        switch state {
-        case .off, .done:        return .none      // done = steady
-        case .working:           return .breathe
-        case .permission, .error:return .flash
         }
     }
 }
