@@ -7,14 +7,13 @@ import ClaudeSignalCore
 /// and `render` simply updates a view nobody sees — no crash, menu bar unaffected.
 @MainActor
 final class TouchBarSurface: SignalSurface {
-    private let identifier = NSTouchBarItem.Identifier("com.claudesignal.touchbar.light")
     private let item: NSCustomTouchBarItem
     private let lightView = TouchBarLightView(frame: NSRect(x: 0, y: 0, width: 44, height: 30))
     private var timer: Timer?
     private var current: DisplayState?
 
     init() {
-        item = NSCustomTouchBarItem(identifier: identifier)
+        item = NSCustomTouchBarItem(identifier: NSTouchBarItem.Identifier("com.claudesignal.touchbar.light"))
         item.view = lightView
         DFRControlStrip.add(item)   // graceful no-op if the private API is unavailable
         if !DFRControlStrip.isAvailable {
