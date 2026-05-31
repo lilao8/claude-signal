@@ -83,5 +83,20 @@ else
   echo "FAIL - fallback should still write ratelimit.json"; fail=1
 fi
 
+# 12:00am (midnight) edge case — must map to 00:00, not 12:00
+rm -f "$TMP/ratelimit.json"
+echo '{"hook_event_name":"StopFailure","session_id":"s1","error":"rate_limit","last_assistant_message":"resets 12:00am (America/Toronto)"}' | bash "$SCRIPT"
+reset_at=$(jq -r '.reset_at' "$TMP/ratelimit.json")
+# the resolved instant, formatted as hour in Toronto, must be 00
+hh=$(TZ=America/Toronto date -r "$reset_at" '+%H')
+check "12:00am maps to 00:xx Toronto" "00" "$hh"
+
+# 12:00pm (noon) edge case — must map to 12:00
+rm -f "$TMP/ratelimit.json"
+echo '{"hook_event_name":"StopFailure","session_id":"s1","error":"rate_limit","last_assistant_message":"resets 12:00pm (America/Toronto)"}' | bash "$SCRIPT"
+reset_at=$(jq -r '.reset_at' "$TMP/ratelimit.json")
+hh=$(TZ=America/Toronto date -r "$reset_at" '+%H')
+check "12:00pm maps to 12:xx Toronto" "12" "$hh"
+
 rm -rf "$TMP"
 exit $fail

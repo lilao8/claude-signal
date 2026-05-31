@@ -23,6 +23,8 @@ cwd="$(printf '%s' "$input" | jq -r '.cwd // empty')"
 write_ratelimit() {
   local msg="$1" clock tz reset_at h m ampm hh24 today
   clock="$(printf '%s' "$msg" | grep -oE '[0-9]{1,2}:[0-9]{2}[ap]m' | head -1)"
+  # Matches single-slash IANA zones (America/Toronto). Rare multi-level zones
+  # (America/Indiana/Indianapolis) won't match → sentinel fallback, which is safe.
   tz="$(printf '%s' "$msg" | grep -oE '\([A-Za-z]+/[A-Za-z_]+\)' | head -1 | tr -d '()')"
 
   if [ -n "$clock" ] && [ -n "$tz" ]; then
@@ -35,6 +37,7 @@ write_ratelimit() {
     if [ "$ampm" = "am" ] && [ "$h" = "12" ]; then hh24=0; fi
     reset_at="$(TZ="$tz" date -j -f '%Y-%m-%d %H:%M:%S' "$today $(printf '%02d' "$hh24"):$m:00" '+%s' 2>/dev/null)"
     if [ -n "$reset_at" ] && [ "$reset_at" -le "$(date +%s)" ]; then
+      # +86400 is not DST-aware; on the 2 DST-change days/year reset_at may be off by 1h — acceptable.
       reset_at=$((reset_at + 86400))
     fi
   fi
