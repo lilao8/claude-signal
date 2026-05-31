@@ -4,7 +4,7 @@ A menu-bar traffic light for Claude Code state on macOS.
 
 - 🔵 breathing blue — Claude is working
 - 🟡 flashing yellow — needs your permission
-- 🔴 flashing red — error (e.g. network down while working)
+- 🔴 flashing red — error: network down while working, OR you've hit a usage limit (stays red until the limit resets or you use Claude again)
 - 🟢 steady green — done, and you've stepped away
 - ⚫️ off — your turn / idle
 
