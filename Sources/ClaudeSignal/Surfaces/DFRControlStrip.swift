@@ -13,6 +13,8 @@ enum DFRControlStrip {
 
     /// Resolved once. nil if the private framework/symbol isn't available here.
     private static let setPresence: SetPresenceFn? = {
+        // Resolve once; the dlopen handle is intentionally never dlclose'd — the framework
+        // stays loaded for the process lifetime (dlclose'ing a system framework is risky).
         let path = "/System/Library/PrivateFrameworks/DFRFoundation.framework/DFRFoundation"
         guard let handle = dlopen(path, RTLD_NOW),
               let sym = dlsym(handle, "DFRElementSetControlStripPresenceForIdentifier")
@@ -23,9 +25,8 @@ enum DFRControlStrip {
     private static let addSystemTraySel = NSSelectorFromString("addSystemTrayItem:")
 
     /// Whether the persistent Control-Strip API is usable on this machine.
-    static var isAvailable: Bool {
-        setPresence != nil && NSTouchBarItem.responds(to: addSystemTraySel)
-    }
+    /// Resolved once — availability is invariant for the process lifetime.
+    static let isAvailable: Bool = setPresence != nil && NSTouchBarItem.responds(to: addSystemTraySel)
 
     /// Register `item` as a persistent Control-Strip item (always visible,
     /// independent of the focused app). No-op if the private API is unavailable.
