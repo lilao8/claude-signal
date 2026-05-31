@@ -98,5 +98,43 @@ reset_at=$(jq -r '.reset_at' "$TMP/ratelimit.json")
 hh=$(TZ=America/Toronto date -r "$reset_at" '+%H')
 check "12:00pm maps to 12:xx Toronto" "12" "$hh"
 
+# ---- multi-format reset parsing ----
+
+# Format A still works: "resets 1:10am (America/Toronto)"
+rm -f "$TMP/ratelimit.json"
+echo '{"hook_event_name":"StopFailure","session_id":"s1","error":"rate_limit","last_assistant_message":"resets 1:10am (America/Toronto)"}' | bash "$SCRIPT"
+hh=$(TZ=America/Toronto date -r "$(jq -r .reset_at "$TMP/ratelimit.json")" '+%H:%M')
+check "format A (tz) -> 01:10 Toronto" "01:10" "$hh"
+
+# Format B: "Resets at 12:50 PM" (no tz) -> local time 12:50
+rm -f "$TMP/ratelimit.json"
+echo '{"hook_event_name":"StopFailure","session_id":"s1","error":"rate_limit","last_assistant_message":"Usage limit reached · Resets at 12:50 PM"}' | bash "$SCRIPT"
+hh=$(date -r "$(jq -r .reset_at "$TMP/ratelimit.json")" '+%H:%M')
+check "format B (no tz) -> 12:50 local" "12:50" "$hh"
+
+# Format C: "reset in 45 mins" -> now + 45*60 (allow ±2s slack)
+rm -f "$TMP/ratelimit.json"
+nowts=$(date +%s)
+echo '{"hook_event_name":"StopFailure","session_id":"s1","error":"rate_limit","last_assistant_message":"Usage limit reached, reset in 45 mins"}' | bash "$SCRIPT"
+got=$(jq -r .reset_at "$TMP/ratelimit.json")
+exp=$(( nowts + 45*60 ))
+diff=$(( got - exp )); diff=${diff#-}
+if [ "$diff" -le 2 ]; then echo "ok  - format C (relative) -> now+45m"; else echo "FAIL - format C: got $got exp ~$exp"; fail=1; fi
+
+# Format C variant: "in 30m"
+rm -f "$TMP/ratelimit.json"
+nowts=$(date +%s)
+echo '{"hook_event_name":"StopFailure","session_id":"s1","error":"rate_limit","last_assistant_message":"try again in 30m"}' | bash "$SCRIPT"
+got=$(jq -r .reset_at "$TMP/ratelimit.json")
+exp=$(( nowts + 30*60 ))
+diff=$(( got - exp )); diff=${diff#-}
+if [ "$diff" -le 2 ]; then echo "ok  - format C variant (30m)"; else echo "FAIL - format C variant: got $got exp ~$exp"; fail=1; fi
+
+# Unparseable still -> sentinel
+rm -f "$TMP/ratelimit.json"
+echo '{"hook_event_name":"StopFailure","session_id":"s1","error":"rate_limit","last_assistant_message":"limit reached, sorry"}' | bash "$SCRIPT"
+got=$(jq -r .reset_at "$TMP/ratelimit.json")
+[ "$got" -ge 99999999999 ] && echo "ok  - unparseable -> sentinel" || { echo "FAIL - sentinel: got $got"; fail=1; }
+
 rm -rf "$TMP"
 exit $fail

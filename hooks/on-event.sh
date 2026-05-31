@@ -17,31 +17,70 @@ event="$(printf '%s' "$input" | jq -r '.hook_event_name // empty')"
 sid="$(printf '%s' "$input" | jq -r '.session_id // empty')"
 cwd="$(printf '%s' "$input" | jq -r '.cwd // empty')"
 
-# Parse "resets 1:10am (America/Toronto)" from a StopFailure message and write
-# ratelimit.json with reset_at = the NEXT occurrence of that clock time in that tz.
-# Falls back to a far-future sentinel if it can't be parsed (red persists until activity).
-write_ratelimit() {
-  local msg="$1" clock tz reset_at h m ampm hh24 today
-  clock="$(printf '%s' "$msg" | grep -oE '[0-9]{1,2}:[0-9]{2}[ap]m' | head -1)"
-  # Matches single-slash IANA zones (America/Toronto). Rare multi-level zones
-  # (America/Indiana/Indianapolis) won't match → sentinel fallback, which is safe.
-  tz="$(printf '%s' "$msg" | grep -oE '\([A-Za-z]+/[A-Za-z_]+\)' | head -1 | tr -d '()')"
-
-  if [ -n "$clock" ] && [ -n "$tz" ]; then
+# Resolve a 12h clock ("1:10am" lowercase OR "12:50 PM" with space+caps) to the NEXT
+# occurrence (unix seconds) in timezone $2 ("" = local). Echoes the timestamp, or nothing.
+resolve_clock() {
+  local clock="$1" tz="$2" h m ampm hh24 today reset_at
+  # normalize: strip spaces, lowercase
+  clock="$(printf '%s' "$clock" | tr 'A-Z' 'a-z' | tr -d ' ')"   # "12:50pm"
+  h="${clock%%:*}"
+  m="$(printf '%s' "$clock" | sed -E 's/^[0-9]{1,2}:([0-9]{2})[ap]m$/\1/')"
+  ampm="$(printf '%s' "$clock" | grep -oE '[ap]m')"
+  [ -z "$h" ] || [ -z "$m" ] || [ -z "$ampm" ] && return 0
+  hh24="$h"
+  if [ "$ampm" = "pm" ] && [ "$h" != "12" ]; then hh24=$((h + 12)); fi
+  if [ "$ampm" = "am" ] && [ "$h" = "12" ]; then hh24=0; fi
+  # When tz is empty use the system local timezone (TZ="" means UTC on macOS, so avoid it).
+  if [ -n "$tz" ]; then
     today="$(TZ="$tz" date '+%Y-%m-%d')"
-    h="${clock%%:*}"
-    m="$(printf '%s' "$clock" | sed -E 's/^[0-9]{1,2}:([0-9]{2})[ap]m/\1/')"
-    ampm="$(printf '%s' "$clock" | grep -oE '[ap]m')"
-    hh24="$h"
-    if [ "$ampm" = "pm" ] && [ "$h" != "12" ]; then hh24=$((h + 12)); fi
-    if [ "$ampm" = "am" ] && [ "$h" = "12" ]; then hh24=0; fi
     reset_at="$(TZ="$tz" date -j -f '%Y-%m-%d %H:%M:%S' "$today $(printf '%02d' "$hh24"):$m:00" '+%s' 2>/dev/null)"
-    if [ -n "$reset_at" ] && [ "$reset_at" -le "$(date +%s)" ]; then
-      # +86400 is not DST-aware; on the 2 DST-change days/year reset_at may be off by 1h — acceptable.
-      reset_at=$((reset_at + 86400))
+  else
+    today="$(date '+%Y-%m-%d')"
+    reset_at="$(date -j -f '%Y-%m-%d %H:%M:%S' "$today $(printf '%02d' "$hh24"):$m:00" '+%s' 2>/dev/null)"
+  fi
+  [ -z "$reset_at" ] && return 0
+  if [ "$reset_at" -le "$(date +%s)" ]; then
+    # +86400 is not DST-aware; on the 2 DST-change days/year reset_at may be off by 1h — acceptable.
+    reset_at=$((reset_at + 86400))
+  fi
+  printf '%s' "$reset_at"
+}
+
+# Parse a StopFailure rate-limit message into reset_at (unix seconds), trying the most
+# reliable format first. Writes ratelimit.json. Sentinel fallback if nothing parses.
+# Formats handled (priority order):
+#   C) relative: "reset in 45 mins" / "in 45m"   -> now + N*60   (most reliable; no tz/date ambiguity)
+#   A) absolute+tz: "resets 1:10am (America/Toronto)" -> next occurrence in that tz
+#   B) absolute, no tz: "Resets at 12:50 PM"     -> next occurrence in LOCAL tz
+write_ratelimit() {
+  local msg="$1" reset_at mins clock tz
+  reset_at=""
+
+  # C) relative countdown: "... in <N> min[s]" or "... in <N>m"
+  mins="$(printf '%s' "$msg" | grep -oiE 'in [0-9]+ ?m(in)?' | grep -oE '[0-9]+' | head -1)"
+  if [ -n "$mins" ]; then
+    reset_at=$(( $(date +%s) + mins * 60 ))
+  fi
+
+  # A) absolute clock WITH IANA tz in parens
+  if [ -z "$reset_at" ]; then
+    clock="$(printf '%s' "$msg" | grep -oiE '[0-9]{1,2}:[0-9]{2} ?[ap]m' | head -1)"
+    # Matches single-slash IANA zones (America/Toronto). Rare multi-level zones won't match.
+    tz="$(printf '%s' "$msg" | grep -oE '\([A-Za-z]+/[A-Za-z_]+\)' | head -1 | tr -d '()')"
+    if [ -n "$clock" ] && [ -n "$tz" ]; then
+      reset_at="$(resolve_clock "$clock" "$tz")"
     fi
   fi
 
+  # B) absolute clock with NO tz -> local timezone
+  if [ -z "$reset_at" ]; then
+    clock="$(printf '%s' "$msg" | grep -oiE '[0-9]{1,2}:[0-9]{2} ?[ap]m' | head -1)"
+    if [ -n "$clock" ]; then
+      reset_at="$(resolve_clock "$clock" "")"
+    fi
+  fi
+
+  # fallback
   [ -z "${reset_at:-}" ] && reset_at="$SENTINEL"
 
   jq -n --argjson r "$reset_at" --arg raw "$msg" '{reset_at:$r, raw:$raw}' \
