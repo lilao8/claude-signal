@@ -9,7 +9,11 @@ public protocol IdleTimeProviding: Sendable {
 public struct SystemIdleTimeProvider: IdleTimeProviding {
     public init() {}
     public func idleSeconds() -> TimeInterval {
-        CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: .null)
+        // kCGAnyInputEventType (~0) = seconds since ANY keyboard/mouse/HID input.
+        // NOT .null (rawValue 0), which means "since last null-type event" — those
+        // essentially never fire, so .null returns a huge constant and breaks presence.
+        let anyInput = CGEventType(rawValue: ~0)!
+        return CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: anyInput)
     }
 }
 
