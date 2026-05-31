@@ -7,6 +7,7 @@ import ClaudeSignalCore
 /// and `render` simply updates a view nobody sees — no crash, menu bar unaffected.
 @MainActor
 final class TouchBarSurface: SignalSurface {
+    /// Retained for the surface's lifetime to keep the Control Strip item alive.
     private let item: NSCustomTouchBarItem
     private let lightView = TouchBarLightView(frame: NSRect(x: 0, y: 0, width: 44, height: 30))
     private var timer: Timer?
