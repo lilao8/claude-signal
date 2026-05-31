@@ -5,7 +5,7 @@ set -euo pipefail
 
 SETTINGS="${CLAUDE_SETTINGS:-$HOME/.claude/settings.json}"
 HOOK="$(cd "$(dirname "$0")" && pwd)/on-event.sh"
-EVENTS=(UserPromptSubmit PreToolUse PostToolUse Notification Stop SubagentStop SessionEnd)
+EVENTS=(UserPromptSubmit PreToolUse PostToolUse Notification Stop StopFailure SubagentStop SessionEnd)
 
 [ -x "$HOOK" ] || { echo "error: hook script not found or not executable: $HOOK" >&2; exit 1; }
 mkdir -p "$(dirname "$SETTINGS")"
