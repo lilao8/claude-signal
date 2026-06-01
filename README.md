@@ -156,7 +156,7 @@ rm -f "$HOME/.local/bin/claude-signal"
 - ✅ **Phase 1** — menu bar · 菜单栏
 - ✅ **Phase 2** — Touch Bar Control Strip · Touch Bar 控制条
 - ✅ **Usage-limit red light** · 用量上限红灯
-- ⏳ **Phase 3** — notch "Dynamic Island" overlay (for Macs with a notch) · 刘海"灵动岛"覆盖层（用于带刘海的 Mac）
+- ✅ **Phase 3** — notch outline light: a U-shaped glow around the camera notch on notch Macs (no-op on others) · 刘海描边灯：带刘海的 Mac 上沿摄像头刘海一圈 U 形辉光（无刘海机器自动跳过）
 
 Full design lives in `docs/superpowers/specs/`. Inspired by [starlight36/vibecoding-signal-light](https://github.com/starlight36/vibecoding-signal-light), which drives a *physical* USB traffic light — this project replaces it with the Mac's own built-in surfaces.
 
