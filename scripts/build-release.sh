@@ -12,7 +12,9 @@ BIN=".build/apple/Products/Release/ClaudeSignal"
 [ -f "$BIN" ] || { echo "error: universal binary not found at $BIN" >&2; exit 1; }
 echo "Built: $(file "$BIN" | sed 's/^[^:]*: //')"
 
-STAGE="$(mktemp -d)/claude-signal"
+STAGE_ROOT="$(mktemp -d)"
+trap 'rm -rf "$STAGE_ROOT"' EXIT
+STAGE="$STAGE_ROOT/claude-signal"
 mkdir -p "$STAGE/hooks/tests"
 cp "$BIN" "$STAGE/ClaudeSignal"
 cp hooks/on-event.sh hooks/install.sh hooks/uninstall.sh "$STAGE/hooks/"
@@ -21,7 +23,6 @@ cp scripts/install-from-release.sh "$STAGE/install.sh"
 chmod +x "$STAGE/ClaudeSignal" "$STAGE/hooks/"*.sh "$STAGE/install.sh"
 
 mkdir -p "$ROOT/dist"
-( cd "$(dirname "$STAGE")" && zip -r -q "$ROOT/dist/claude-signal-macos.zip" "claude-signal" )
-rm -rf "$(dirname "$STAGE")"
+( cd "$STAGE_ROOT" && zip -r -q "$ROOT/dist/claude-signal-macos.zip" "claude-signal" )
 echo "Packaged: dist/claude-signal-macos.zip"
 echo "Upload that zip to a GitHub Release. Users run ./install.sh after unzipping."
