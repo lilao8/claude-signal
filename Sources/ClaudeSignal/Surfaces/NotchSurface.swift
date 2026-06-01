@@ -62,14 +62,16 @@ final class NotchSurface: SignalSurface {
     }
 
     private func startTimer(period: TimeInterval, color: NSColor, ease: Bool) {
-        guard let outlineView else { return }
+        guard outlineView != nil else { return }   // no-op on non-notch Macs
         let start = Date()
         let t = Timer(timeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
-            guard self != nil else { return }
             let elapsed = Date().timeIntervalSince(start)
             let alpha = LightAnimation.alpha(elapsed: elapsed, period: period, ease: ease)
+            // Timer fires on the main run loop; assumeIsolated avoids a Sendable crossing
+            // for the non-Sendable NSColor capture. Drive the view through self so a
+            // torn-down surface stops updating (parity with TouchBarSurface).
             MainActor.assumeIsolated {
-                outlineView.setLight(color: color, alpha: alpha)
+                self?.outlineView?.setLight(color: color, alpha: alpha)
             }
         }
         RunLoop.main.add(t, forMode: .common)
