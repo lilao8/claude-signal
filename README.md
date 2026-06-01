@@ -45,9 +45,9 @@ The green "done" light is **presence-aware**: it only appears when you've actual
 
 绿色"完成"灯是**感知在场**的：只有当你真正离开（约 30 秒无操作）时才亮，你一碰键盘它立刻熄灭——所以它绝不会在你工作时打扰你。
 
-The same light shows on the menu bar **and** the Touch Bar Control Strip. On Macs without a Touch Bar, the Touch Bar surface is a silent no-op and the menu bar works as usual.
+The same light shows on the menu bar, the Touch Bar Control Strip (no-op on Macs without a Touch Bar), and as a U-shaped glow around the camera notch (no-op on Macs without a notch).
 
-同一个灯同时显示在菜单栏**和** Touch Bar Control Strip 上。没有 Touch Bar 的 Mac 上，Touch Bar 部分静默跳过，菜单栏照常工作。
+同一个灯同时显示在菜单栏、Touch Bar Control Strip（无 Touch Bar 的机器自动跳过）、以及摄像头刘海周围的 U 形辉光（无刘海的机器自动跳过）上。
 
 ---
 
@@ -76,7 +76,7 @@ Background app (Swift, no Dock icon, auto-starts at login)
    └── Coordinator       wires it together
         │  one final light
         ▼
-   Menu bar  +  Touch Bar Control Strip
+   Menu bar  +  Touch Bar Control Strip  +  Notch outline (notch Macs only)
 ```
 
 **Key property · 关键特性:** the "brain" is pure logic with no UI, so it's fully unit-tested. Each display surface is an isolated plug-in — adding one never touches the brain.
@@ -112,7 +112,7 @@ bash scripts/install-launchagent.sh   # build release + auto-start at login · �
 ## Develop · 开发
 
 ```bash
-swift test                                          # core unit tests · 核心单元测试 (52)
+swift test                                          # core unit tests · 核心单元测试 (57)
 bash hooks/tests/test-on-event.sh                   # hook script tests · hook 脚本测试 (19)
 swift run ClaudeSignal --simulate working,done away # headless light-resolution check · 无界面解析检查
 swift run ClaudeSignal                              # run the app in the foreground · 前台运行 app

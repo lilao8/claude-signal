@@ -1,7 +1,7 @@
 import AppKit
 import ClaudeSignalCore
 
-/// Anything that can show the light. Phase 1 = menu bar; Phase 2 = Touch Bar; later = notch.
+/// Anything that can show the light. Phase 1 = menu bar; Phase 2 = Touch Bar; Phase 3 = notch.
 @MainActor
 protocol SignalSurface: AnyObject {
     func render(_ state: DisplayState)
