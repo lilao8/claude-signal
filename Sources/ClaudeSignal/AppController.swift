@@ -20,7 +20,7 @@ final class AppController: NSObject, NSApplicationDelegate {
             rateLimitStore: RateLimitStore(fileURL: signalDir.appendingPathComponent("ratelimit.json"))
         )
         // Menu bar (universal) + Touch Bar (no-ops gracefully if unavailable).
-        surfaces = [MenuBarSurface(), TouchBarSurface()]
+        surfaces = [MenuBarSurface(), TouchBarSurface(), NotchSurface()]
         super.init()
     }
 
