@@ -11,3 +11,6 @@ xcuserdata/
 
 # Brainstorming scratch (visual companion)
 .superpowers/
+
+# Distribution artifacts (built by scripts/build-release.sh)
+dist/

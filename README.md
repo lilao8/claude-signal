@@ -91,7 +91,23 @@ When Claude Code hits a usage limit, it fires a `StopFailure` hook with `error: 
 
 ---
 
-## Install · 安装
+## Install (prebuilt — no Xcode) · 安装（预编译，无需 Xcode）
+
+Download `claude-signal-macos.zip` from the [Releases](../../releases) page, unzip it, and from inside the unzipped folder run:
+
+```bash
+./install.sh
+```
+
+This installs a universal binary (Intel + Apple Silicon), registers the Claude Code hooks, and starts the app at login. **Keep the unzipped folder** — the hook scripts are referenced from there.
+
+The binary is unsigned (no Apple Developer account). If macOS blocks it, right-click `~/.local/bin/claude-signal` in Finder → **Open** once to allow it.
+
+从 [Releases](../../releases) 页面下载 `claude-signal-macos.zip`，解压后在解压目录里运行 `./install.sh`。它会安装一个 universal 二进制（Intel + Apple Silicon）、注册 Claude Code hooks、并设为开机自启。**请保留解压出来的文件夹**——hook 脚本是从那里引用的。二进制未签名（没有 Apple 开发者账号），若 macOS 拦截，在 Finder 里右键 `~/.local/bin/claude-signal` → **打开** 一次即可放行。
+
+---
+
+## Install (from source) · 安装（从源码）
 
 Requires macOS 13+ and a full Xcode toolchain (not just Command Line Tools).
 
