@@ -8,6 +8,25 @@ A tiny native macOS "traffic light" for **Claude Code** state — shown on the m
 >
 > Claude Code 的任务常常要跑好几分钟。你切走去忙别的，就会错过它完成、要权限、或卡住的那一刻。claude-signal 把状态放在你余光所及之处。
 
+<!--
+  📸 SCREENSHOTS / 截图 — replace these placeholders with real captures.
+  Suggested shots (put files under docs/images/ and update the paths below):
+    1. demo.gif      — a short screen recording cycling through states:
+                       blue breathing → yellow flashing → green steady → off.
+                       Capture the menu-bar dot AND the Touch Bar together if possible.
+                       (macOS: Cmd-Shift-5 to record a region; convert to GIF.)
+    2. menubar.png   — close-up of the menu-bar dot in each color.
+    3. touchbar.png  — the Touch Bar Control Strip dot (screenshot the Touch Bar via
+                       `Cmd-Shift-6`, or photograph it).
+    4. red-limit.png — the red light when a usage limit is hit.
+-->
+
+<p align="center">
+  <img src="docs/images/demo.gif" alt="claude-signal cycling through states on the menu bar and Touch Bar" width="640">
+  <br>
+  <em>Demo placeholder — record a short GIF cycling blue → yellow → green → off. · 演示占位，录一段蓝→黄→绿→灭的短 GIF。</em>
+</p>
+
 ---
 
 ## The light language · 灯语
