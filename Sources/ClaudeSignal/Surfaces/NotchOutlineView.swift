@@ -9,7 +9,7 @@ final class NotchOutlineView: NSView {
     // --- tunable style constants ---
     private let borderWidth: CGFloat = 3
     private let cornerRadius: CGFloat = 10
-    private let glowRadius: CGFloat = 10
+    private let glowRadius: CGFloat = 7
     // --------------------------------
 
     private var strokeColor: NSColor = .clear

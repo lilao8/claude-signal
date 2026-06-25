@@ -28,13 +28,15 @@ final class NotchGeometryTests: XCTestCase {
     }
 
     func testOutlineFrameForSixteenInch() {
-        let frame = NotchGeometry.outlineFrame(sixteenInch(), margin: 2)
+        // notchBottomY = 1117 - 32 = 1085; margin 2, depth 20.
+        let frame = NotchGeometry.outlineFrame(sixteenInch(), margin: 2, depth: 20)
         let f = try! XCTUnwrap(frame)
-        XCTAssertEqual(f.minX, 762, accuracy: 0.001)   // 764 - 2
-        XCTAssertEqual(f.width, 204, accuracy: 0.001)  // 200 + 4
-        XCTAssertEqual(f.minY, 1083, accuracy: 0.001)  // 1117 - 32 - 2
-        XCTAssertEqual(f.height, 34, accuracy: 0.001)  // 32 + 2
-        XCTAssertEqual(f.maxY, 1117, accuracy: 0.001)  // flush with screen top
+        XCTAssertEqual(f.minX, 762, accuracy: 0.001)    // 764 - 2
+        XCTAssertEqual(f.width, 204, accuracy: 0.001)   // 200 + 4
+        XCTAssertEqual(f.minY, 1065, accuracy: 0.001)   // 1085 - 20
+        XCTAssertEqual(f.height, 52, accuracy: 0.001)   // safeAreaTop 32 + depth 20
+        // Arms run flush with the screen top; bottom drops `depth` below the notch.
+        XCTAssertEqual(f.maxY, 1117, accuracy: 0.001)   // flush with screen top
     }
 
     func testDegenerateWidthReturnsNil() {
@@ -46,10 +48,11 @@ final class NotchGeometryTests: XCTestCase {
     }
 
     func testMarginZero() {
-        let frame = NotchGeometry.outlineFrame(sixteenInch(), margin: 0)
+        let frame = NotchGeometry.outlineFrame(sixteenInch(), margin: 0, depth: 20)
         let f = try! XCTUnwrap(frame)
         XCTAssertEqual(f.minX, 764, accuracy: 0.001)
         XCTAssertEqual(f.width, 200, accuracy: 0.001)
-        XCTAssertEqual(f.height, 32, accuracy: 0.001)
+        XCTAssertEqual(f.minY, 1065, accuracy: 0.001)  // 1085 - 20
+        XCTAssertEqual(f.height, 52, accuracy: 0.001)  // 32 + 20
     }
 }
