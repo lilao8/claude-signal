@@ -7,9 +7,9 @@ import AppKit
 @MainActor
 final class NotchOutlineView: NSView {
     // --- tunable style constants ---
-    private let borderWidth: CGFloat = 1.5
+    private let borderWidth: CGFloat = 3
     private let cornerRadius: CGFloat = 10
-    private let glowRadius: CGFloat = 6
+    private let glowRadius: CGFloat = 10
     // --------------------------------
 
     private var strokeColor: NSColor = .clear
@@ -52,12 +52,23 @@ final class NotchOutlineView: NSView {
         path.lineCapStyle = .round
 
         let c = strokeColor.withAlphaComponent(strokeAlpha)
-        let shadow = NSShadow()
-        shadow.shadowColor = c
-        shadow.shadowBlurRadius = glowRadius
-        shadow.shadowOffset = .zero
-        shadow.set()
         c.setStroke()
+
+        // Two-pass glow: a wide soft halo first, then a tighter brighter core on top.
+        // Stacking the shadows reads as a real emissive glow even at the breathe low
+        // (alpha ~0.35), without touching the shared LightAnimation timing.
+        let halo = NSShadow()
+        halo.shadowColor = c
+        halo.shadowBlurRadius = glowRadius
+        halo.shadowOffset = .zero
+        halo.set()
+        path.stroke()
+
+        let core = NSShadow()
+        core.shadowColor = c
+        core.shadowBlurRadius = glowRadius / 2
+        core.shadowOffset = .zero
+        core.set()
         path.stroke()
     }
 }
