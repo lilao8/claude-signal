@@ -6,17 +6,20 @@ public struct Coordinator: Sendable {
     let reachability: ReachabilityChecking
     let rateLimitStore: RateLimitStore
     let permissionThreshold: TimeInterval
+    let idleThreshold: TimeInterval
 
     public init(store: StateStore,
                 presence: PresenceMonitor,
                 reachability: ReachabilityChecking,
                 rateLimitStore: RateLimitStore,
-                permissionThreshold: TimeInterval = PermissionDetection.defaultThreshold) {
+                permissionThreshold: TimeInterval = PermissionDetection.defaultThreshold,
+                idleThreshold: TimeInterval = IdleDetection.defaultThreshold) {
         self.store = store
         self.presence = presence
         self.reachability = reachability
         self.rateLimitStore = rateLimitStore
         self.permissionThreshold = permissionThreshold
+        self.idleThreshold = idleThreshold
     }
 
     public func computeDisplayState(now: TimeInterval) -> DisplayState {
@@ -24,6 +27,9 @@ public struct Coordinator: Sendable {
         // Promote sessions blocked on an inline permission prompt (stuck at PreToolUse) to
         // .permission so the light goes yellow even when Claude Code fires no Notification.
         sessions = PermissionDetection.promote(sessions, now: now, threshold: permissionThreshold)
+        // Demote step-boundary sessions that went silent (no Stop fired) to .done so the
+        // light turns off instead of staying stuck blue. Disjoint event set from above.
+        sessions = IdleDetection.demote(sessions, now: now, threshold: idleThreshold)
         var aggregate = Aggregator.aggregate(sessions)
         aggregate = applyNetworkOverride(aggregate, networkDown: !reachability.isReachable())
         aggregate = applyRateLimitOverride(aggregate, rateLimit: rateLimitStore.read(now: now), now: now)
