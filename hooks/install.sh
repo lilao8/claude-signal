@@ -20,8 +20,11 @@ jq --arg hook "$HOOK" --argjson events "$(printf '%s\n' "${EVENTS[@]}" | jq -R .
   .hooks = (.hooks // {})
   | reduce $events[] as $e (.;
       .hooks[$e] = ((.hooks[$e] // [])
-        # drop any prior claude-signal entry for idempotency
-        | map(select(any(.hooks[]?; .command == $hook) | not))
+        # drop ANY prior claude-signal entry (this path or an older install folder) for
+        # idempotency — matching only this exact path left a previous release hook behind
+        # when upgrading from a different folder: both fired (the old one wiping newer
+        # fields), or the stale path failed on every event once that folder was deleted.
+        | map(select(any(.hooks[]?; (.command // "") | test("claude-signal[^/]*/hooks/on-event\\.sh$")) | not))
         + [{ "hooks": [ { "type": "command", "command": $hook } ] }]
       )
     )

@@ -2,14 +2,14 @@
 # Removes claude-signal hook entries from ~/.claude/settings.json.
 set -euo pipefail
 SETTINGS="${CLAUDE_SETTINGS:-$HOME/.claude/settings.json}"
-HOOK="$(cd "$(dirname "$0")" && pwd)/on-event.sh"
 [ -f "$SETTINGS" ] || { echo "no settings file"; exit 0; }
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
-jq --arg hook "$HOOK" '
+jq '
   if .hooks then
     .hooks |= with_entries(
-      .value |= map(select(any(.hooks[]?; .command == $hook) | not))
+      # Any claude-signal hook, including ones registered from an older install folder.
+      .value |= map(select(any(.hooks[]?; (.command // "") | test("claude-signal[^/]*/hooks/on-event\\.sh$")) | not))
     )
   else . end
 ' "$SETTINGS" > "$tmp" && mv "$tmp" "$SETTINGS"
