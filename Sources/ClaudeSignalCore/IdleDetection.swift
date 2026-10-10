@@ -17,9 +17,10 @@ import Foundation
 /// are disjoint.
 public enum IdleDetection {
     /// Default seconds a step-boundary `working` session may stay silent before we treat it
-    /// as idle. Tunable: larger = the light lingers blue longer during long think-gaps but
-    /// takes longer to clear a truly-stuck session.
-    public static let defaultThreshold: TimeInterval = 20
+    /// as idle. Claude can think for well over 20s between tool calls without firing any
+    /// hook, so a short threshold blinked the light off mid-turn; 60s keeps it blue through
+    /// those gaps at the cost of clearing a truly-stuck session a little later.
+    public static let defaultThreshold: TimeInterval = 60
 
     /// Events after which continued silence means the session went idle (not mid-tool).
     static let idleAfterEvents: Set<String> = ["PostToolUse", "SubagentStop", "UserPromptSubmit"]

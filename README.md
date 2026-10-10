@@ -89,8 +89,8 @@ When Claude Code hits a usage limit, it fires a `StopFailure` hook with `error: 
   hook 会记录每个会话所属 Claude Code 进程的 pid，app 让会话与该进程同生共死。（没有 pid 的旧文件按 5 分钟超时处理。）
 - **Inline permission prompts → yellow · 内联授权提示 → 黄灯.** Inline "allow this tool?" prompts often fire no `Notification` hook. A session that has sat at `PreToolUse` for more than 12s without the tool completing is treated as waiting for permission. Trade-off: a single tool that runs longer than 12s also reads yellow until it finishes.
   终端里的"allow this tool?"内联提示常常不触发 `Notification` hook。会话停在 `PreToolUse` 超过 12 秒、工具还没完成，就视为在等授权。代价：单个工具运行超过 12 秒时，在它结束前也会显示黄灯。
-- **Idle without `Stop` → done · 没发 `Stop` 的闲置 → 完成.** `Stop` is the only event that ends a turn. A session that finished a step (`PostToolUse` / `SubagentStop` / `UserPromptSubmit`) and then stayed silent for more than 20s is treated as done, so the light doesn't stay stuck on blue.
-  `Stop` 是唯一表示一轮结束的事件。会话做完一步（`PostToolUse` / `SubagentStop` / `UserPromptSubmit`）后静默超过 20 秒，就视为完成，避免灯卡在蓝色。
+- **Idle without `Stop` → done · 没发 `Stop` 的闲置 → 完成.** `Stop` is the only event that ends a turn. A session that finished a step (`PostToolUse` / `SubagentStop` / `UserPromptSubmit`) and then stayed silent for more than 60s is treated as done, so the light doesn't stay stuck on blue. (60s rather than shorter because Claude can think that long between tool calls without firing any hook.)
+  `Stop` 是唯一表示一轮结束的事件。会话做完一步（`PostToolUse` / `SubagentStop` / `UserPromptSubmit`）后静默超过 60 秒，就视为完成，避免灯卡在蓝色。（不设得更短，是因为 Claude 在两次工具调用之间可能思考这么久，期间不触发任何 hook。）
 - **Seen = input after it finished · 已读 = 完成后有过操作.** Keyboard/mouse input after a done session finished (4s grace) or an error session failed (10s grace) marks it as seen. A just-finished session flashes green for 4s even while you're at the keyboard.
   done 会话完成后（宽限 4 秒）、error 会话失败后（宽限 10 秒）你有过键盘或鼠标操作，就算已读。刚完成的会话即使你在场也会闪 4 秒绿灯。
 - **Failures → red · 失败 → 红灯.** Any `StopFailure` other than a rate limit marks that session as error.
@@ -154,8 +154,8 @@ swift run ClaudeSignal                              # run the app in the foregro
 ```bash
 $ swift run ClaudeSignal --simulate working@PreToolUse:15 present
 sessions=[working@PreToolUse:15s] idle=0s -> display=permission
-$ swift run ClaudeSignal --simulate working@SubagentStop:30 idle=100
-sessions=[working@SubagentStop:30s] idle=100s -> display=done
+$ swift run ClaudeSignal --simulate working@SubagentStop:90 idle=120
+sessions=[working@SubagentStop:90s] idle=120s -> display=done
 $ swift run ClaudeSignal --simulate done:2 present
 sessions=[done:2s] idle=0s -> display=done
 ```

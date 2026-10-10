@@ -14,7 +14,7 @@ import ClaudeSignalCore
 /// Examples:
 ///   claude-signal --simulate working,done away
 ///   claude-signal --simulate working@PreToolUse:15 present      # stuck prompt -> permission
-///   claude-signal --simulate working@SubagentStop:30 idle=100   # idle session, unseen -> done
+///   claude-signal --simulate working@SubagentStop:90 idle=120   # idle session, unseen -> done
 ///   claude-signal --simulate done:2 present                     # just finished -> green flash
 enum Simulate {
     private struct FixedIdle: IdleTimeProviding {
