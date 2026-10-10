@@ -27,6 +27,15 @@ public struct PresenceMonitor: Sendable {
     }
 
     public func current() -> Presence {
-        provider.idleSeconds() >= threshold ? .away : .present
+        presence(forIdle: idleSeconds())
+    }
+
+    /// Seconds since the last keyboard/mouse input (sample once per tick and reuse).
+    public func idleSeconds() -> TimeInterval {
+        provider.idleSeconds()
+    }
+
+    public func presence(forIdle idle: TimeInterval) -> Presence {
+        idle >= threshold ? .away : .present
     }
 }

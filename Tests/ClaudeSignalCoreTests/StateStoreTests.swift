@@ -1,6 +1,11 @@
 import XCTest
 @testable import ClaudeSignalCore
 
+private struct FakeLiveness: ProcessLivenessChecking {
+    let alive: Set<Int32>
+    func isAlive(_ pid: Int32) -> Bool { alive.contains(pid) }
+}
+
 final class StateStoreTests: XCTestCase {
     private var dir: URL!
 
@@ -50,5 +55,18 @@ final class StateStoreTests: XCTestCase {
     func testMissingDirectoryReturnsEmpty() {
         let store = StateStore(directory: dir.appendingPathComponent("nope"), staleThreshold: 300)
         XCTAssertEqual(store.loadLiveSessions(now: 0).count, 0)
+    }
+
+    func testPidSessionsLiveExactlyAsLongAsTheirProcess() throws {
+        func put(_ id: String, pid: Int32, at: TimeInterval) throws {
+            let s = SessionState(sessionId: id, status: .done, updatedAt: at, pid: pid)
+            try JSONEncoder().encode(s).write(to: dir.appendingPathComponent("\(id).json"))
+        }
+        try put("alive-old", pid: 1, at: 0)        // hours old but process alive → kept
+        try put("dead-new", pid: 2, at: 99_999)    // fresh but process gone → deleted
+        let store = StateStore(directory: dir, staleThreshold: 300,
+                               liveness: FakeLiveness(alive: [1]))
+        XCTAssertEqual(store.loadLiveSessions(now: 100_000).map { $0.sessionId }, ["alive-old"])
+        XCTAssertFalse(FileManager.default.fileExists(atPath: dir.appendingPathComponent("dead-new.json").path))
     }
 }
