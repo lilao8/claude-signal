@@ -87,15 +87,17 @@ write_ratelimit() {
     > "$RATELIMIT_FILE.tmp" && mv "$RATELIMIT_FILE.tmp" "$RATELIMIT_FILE" || rm -f "$RATELIMIT_FILE.tmp"
 }
 
-# StopFailure is account-level (rate limit) — handle BEFORE the session_id guard,
-# since it doesn't need a session id.
+# A rate-limit StopFailure is account-level — handle BEFORE the session_id guard,
+# since it doesn't need a session id. Any OTHER StopFailure (API error, overload, auth…)
+# falls through and marks this session as error below; previously it was ignored, the
+# session stayed "working", and idle detection then showed it as green "done".
 if [ "$event" = "StopFailure" ]; then
   err="$(printf '%s' "$input" | jq -r '.error // empty')"
   if [ "$err" = "rate_limit" ]; then
     msg="$(printf '%s' "$input" | jq -r '.last_assistant_message // empty')"
     write_ratelimit "$msg"
+    exit 0
   fi
-  exit 0
 fi
 
 [ -z "$sid" ] && exit 0
@@ -103,10 +105,34 @@ fi
 file="$DIR/$sid.json"
 now="$(date +%s)"
 
+# PID of the Claude Code process that owns this session, so the app can drop the session
+# exactly when that process exits instead of guessing with a timeout. Walk up from the
+# hook's parent (hooks may run under an intermediate shell) to the first `claude` binary,
+# or a `node` process running claude (npm install). Cached in the session file and reused
+# while still alive, so the ps walk only happens on a session's first event (or after a
+# resume spawns a new process). Prints nothing if not found — the app then falls back to
+# time-based staleness.
+claude_pid() {
+  local cached p i comm
+  cached="$(jq -r '.pid // empty' "$file" 2>/dev/null)"
+  if [ -n "$cached" ] && kill -0 "$cached" 2>/dev/null; then printf '%s' "$cached"; return 0; fi
+  p="$PPID"
+  for i in 1 2 3 4 5 6 7 8; do
+    [ "${p:-0}" -gt 1 ] 2>/dev/null || return 0
+    comm="$(ps -o comm= -p "$p" 2>/dev/null)" || return 0
+    case "${comm##*/}" in
+      claude) printf '%s' "$p"; return 0 ;;
+      node) case "$(ps -o args= -p "$p" 2>/dev/null)" in *claude*) printf '%s' "$p"; return 0 ;; esac ;;
+    esac
+    p="$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')"
+  done
+}
+
 write_state() {
-  local state="$1" ev="${2:-}"
-  jq -n --arg sid "$sid" --arg st "$state" --arg cwd "$cwd" --arg ev "$ev" --argjson now "$now" \
-    '{session_id:$sid, state:$st, updated_at:$now, cwd:($cwd | if . == "" then null else . end), source:"claude", event:($ev | if . == "" then null else . end)}' \
+  local state="$1" ev="${2:-}" pid
+  pid="$(claude_pid)"
+  jq -n --arg sid "$sid" --arg st "$state" --arg cwd "$cwd" --arg ev "$ev" --arg pid "$pid" --argjson now "$now" \
+    '{session_id:$sid, state:$st, updated_at:$now, cwd:($cwd | if . == "" then null else . end), source:"claude", event:($ev | if . == "" then null else . end), pid:($pid | if . == "" then null else tonumber end)}' \
     > "$file.tmp" && mv "$file.tmp" "$file" || rm -f "$file.tmp"
 }
 
@@ -133,6 +159,9 @@ case "$event" in
   Stop)
     rm -f "$RATELIMIT_FILE"
     write_state "done" ;;
+  StopFailure)
+    # Non-rate-limit failure (rate_limit already exited above): show red, not green.
+    write_state "error" ;;
   SessionEnd)
     rm -f "$file" ;;
   *)

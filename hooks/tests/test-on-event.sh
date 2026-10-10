@@ -63,6 +63,20 @@ rm -f "$TMP/ratelimit.json"
 echo '{"hook_event_name":"StopFailure","session_id":"s1","error":"max_output_tokens","last_assistant_message":"too long"}' | bash "$SCRIPT"
 if [ -f "$TMP/ratelimit.json" ]; then echo "FAIL - non-rate_limit should not write ratelimit.json"; fail=1; else echo "ok  - non-rate_limit ignored"; fi
 
+# non-rate_limit StopFailure marks the session error (red), not left "working" -> green
+echo '{"hook_event_name":"StopFailure","session_id":"sf","error":"server_error"}' | bash "$SCRIPT"
+check "non-rate_limit StopFailure->error" "error" "$(jq -r '.state' "$TMP/sessions/sf.json")"
+
+# pid is either absent (no claude ancestor, e.g. CI) or a live process
+echo '{"hook_event_name":"PreToolUse","session_id":"pidtest"}' | bash "$SCRIPT"
+pid="$(jq -r '.pid // empty' "$TMP/sessions/pidtest.json")"
+if [ -z "$pid" ] || kill -0 "$pid" 2>/dev/null; then echo "ok  - pid absent or alive"; else echo "FAIL - pid $pid not alive"; fail=1; fi
+
+# a cached DEAD pid is not reused
+echo '{"session_id":"pidtest","state":"working","updated_at":1,"pid":999999}' > "$TMP/sessions/pidtest.json"
+echo '{"hook_event_name":"PostToolUse","session_id":"pidtest"}' | bash "$SCRIPT"
+check "dead cached pid replaced" "no" "$( [ "$(jq -r '.pid // empty' "$TMP/sessions/pidtest.json")" = "999999" ] && echo yes || echo no)"
+
 # normal activity deletes an existing ratelimit.json (extinguish ②)
 echo '{"reset_at":99999999999,"raw":"x"}' > "$TMP/ratelimit.json"
 echo '{"hook_event_name":"UserPromptSubmit","session_id":"s1"}' | bash "$SCRIPT"
