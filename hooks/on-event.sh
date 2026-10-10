@@ -104,21 +104,31 @@ file="$DIR/$sid.json"
 now="$(date +%s)"
 
 write_state() {
-  local state="$1"
-  jq -n --arg sid "$sid" --arg st "$state" --arg cwd "$cwd" --argjson now "$now" \
-    '{session_id:$sid, state:$st, updated_at:$now, cwd:($cwd | if . == "" then null else . end), source:"claude"}' \
+  local state="$1" ev="${2:-}"
+  jq -n --arg sid "$sid" --arg st "$state" --arg cwd "$cwd" --arg ev "$ev" --argjson now "$now" \
+    '{session_id:$sid, state:$st, updated_at:$now, cwd:($cwd | if . == "" then null else . end), source:"claude", event:($ev | if . == "" then null else . end)}' \
     > "$file.tmp" && mv "$file.tmp" "$file" || rm -f "$file.tmp"
 }
 
 case "$event" in
   UserPromptSubmit|PreToolUse|PostToolUse|SubagentStop)
     rm -f "$RATELIMIT_FILE"
-    write_state "working" ;;
+    # Tag with the event name so Coordinator can detect "stuck at PreToolUse"
+    # (= sitting on an inline permission prompt that Claude Code never reports
+    # via the Notification hook).
+    write_state "working" "$event" ;;
   Notification)
     msg="$(printf '%s' "$input" | jq -r '.message // empty')"
-    case "$msg" in
-      *permission*|*"needs your permission"*) write_state "permission" ;;
-      *)                           write_state "working" ;;
+    # Lowercase for case-insensitive matching; Claude Code wording has varied
+    # ("Claude needs your permission...", "...waiting for your input", "approval", etc.).
+    # Any Notification is, by design, something the user needs to see, so we treat
+    # anything that smells like an attention request as "permission" (yellow).
+    lc="$(printf '%s' "$msg" | tr 'A-Z' 'a-z')"
+    case "$lc" in
+      *permission*|*approval*|*approve*|*waiting\ for\ your\ input*|*needs\ your\ input*|*confirm*)
+        write_state "permission" ;;
+      *)
+        write_state "working" ;;
     esac ;;
   Stop)
     rm -f "$RATELIMIT_FILE"
