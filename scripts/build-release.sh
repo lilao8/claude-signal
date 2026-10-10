@@ -6,11 +6,22 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 echo "Building universal release binary (x86_64 + arm64)…"
-swift build -c release --arch arm64 --arch x86_64
+ARCH_FLAGS=(-c release --arch arm64 --arch x86_64)
+swift build "${ARCH_FLAGS[@]}"
 
-BIN=".build/apple/Products/Release/ClaudeSignal"
+# Ask SwiftPM where it put the product instead of hard-coding a path: the location changed
+# between SwiftPM versions (.build/apple/... -> .build/out/...), and a stale binary left in
+# the old location once got packaged as if it were fresh.
+BIN="$(swift build "${ARCH_FLAGS[@]}" --show-bin-path 2>/dev/null | tail -1)/ClaudeSignal"
 [ -f "$BIN" ] || { echo "error: universal binary not found at $BIN" >&2; exit 1; }
-echo "Built: $(file "$BIN" | sed 's/^[^:]*: //')"
+ARCHS="$(lipo -archs "$BIN")"
+case " $ARCHS " in *" arm64 "*) ;; *) echo "error: $BIN lacks arm64 (has: $ARCHS)" >&2; exit 1 ;; esac
+case " $ARCHS " in *" x86_64 "*) ;; *) echo "error: $BIN lacks x86_64 (has: $ARCHS)" >&2; exit 1 ;; esac
+# Guard against packaging a stale binary: it must match the current sources' behaviour.
+"$BIN" --simulate working@PreToolUse:15 present | grep -q "display=permission" \
+  || { echo "error: $BIN does not behave like the current sources (stale build?)" >&2; exit 1; }
+echo "Built: $BIN"
+echo "       $(file "$BIN" | sed 's/^[^:]*: //')"
 
 STAGE_ROOT="$(mktemp -d)"
 trap 'rm -rf "$STAGE_ROOT"' EXIT
