@@ -54,8 +54,17 @@ final class MenuBarSurface: SignalSurface {
         guard let button = statusItem.button else { return }
         let size = NSSize(width: 16, height: 16)
         let image = NSImage(size: size, flipped: false) { rect in
-            if alpha <= 0 { return true }       // .off => empty image
             let inset = rect.insetBy(dx: 3, dy: 3)
+            if alpha <= 0 {
+                // .off => faint hollow ring rather than nothing, so "idle" is visibly
+                // different from "app not running" (an empty slot looks the same as a
+                // quit/crashed app). Drawn at render time, so it follows light/dark menu bar.
+                let ring = NSBezierPath(ovalIn: inset.insetBy(dx: 0.75, dy: 0.75))
+                ring.lineWidth = 1.5
+                NSColor.tertiaryLabelColor.setStroke()
+                ring.stroke()
+                return true
+            }
             color.withAlphaComponent(alpha).setFill()
             NSBezierPath(ovalIn: inset).fill()
             return true
