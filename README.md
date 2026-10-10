@@ -1,8 +1,8 @@
 # claude-signal
 
-A tiny native macOS "traffic light" for **Claude Code** state — shown on the menu bar and (on Touch Bar Macs) the Touch Bar Control Strip, so you can glance instead of babysitting the terminal.
+A tiny native macOS "traffic light" for **Claude Code** state — shown on the menu bar, around the camera notch (notch Macs), and in the Touch Bar Control Strip (Touch Bar Macs), so you can glance instead of babysitting the terminal.
 
-一个小巧的原生 macOS **Claude Code** 状态"红绿灯"——显示在菜单栏，以及（带 Touch Bar 的 Mac 上）Touch Bar 的 Control Strip，让你瞥一眼就知道状态，而不用一直盯着终端。
+一个小巧的原生 macOS **Claude Code** 状态"红绿灯"——显示在菜单栏、摄像头刘海周围（带刘海的 Mac），以及 Touch Bar 的 Control Strip（带 Touch Bar 的 Mac），让你瞥一眼就知道状态，而不用一直盯着终端。
 
 > Claude Code tasks often run for minutes. You step away — and miss the moment it finishes, asks for permission, or gets stuck. claude-signal puts that state where your eyes already are.
 >
@@ -34,16 +34,16 @@ A tiny native macOS "traffic light" for **Claude Code** state — shown on the m
 | Light · 灯 | Meaning | 含义 |
 |---|---|---|
 | 🔵 **Breathing blue** | Claude is working (thinking / running tools) — no action needed | Claude 正在工作（思考 / 跑工具）——无需你操作 |
-| 🟡 **Flashing yellow** | Needs your permission (yes / allow once / always allow) | 需要你授权（yes / allow once / always allow） |
-| 🔴 **Flashing red** | Something's wrong: network down while working, **or a usage limit was hit** | 出问题了：工作时断网，**或撞到用量上限** |
-| 🟢 **Steady green** | Done — and you've stepped away (it stays dark while you're typing) | 做完了——而且你已离开（你打字时它保持熄灭） |
-| ⚫️ **Off** | Your turn, or nothing happening | 轮到你了，或什么都没发生 |
+| 🟡 **Flashing yellow** | Needs your permission (yes / allow once / always allow) — including inline prompts | 需要你授权（yes / allow once / always allow）——包括终端里的内联提示 |
+| 🔴 **Flashing red** | Something's wrong: a turn failed (API error, overload…), network down while working, **or a usage limit was hit** | 出问题了：某轮失败（API 报错、过载…）、工作时断网，**或撞到用量上限** |
+| 🟢 **Steady green** | Done and you haven't looked yet — shown while you're away; also a 4s flash the moment a turn finishes | 做完了且你还没看——你离开时显示；一轮刚结束时也会闪 4 秒 |
+| ⚫️ **Off** | Your turn, or nothing happening (menu bar shows a faint hollow ring — no ring means the app isn't running) | 轮到你了，或什么都没发生（菜单栏显示淡灰空心圈——没有圈说明 app 没在跑） |
 
 **Priority when several sessions run at once · 多会话同时运行时的优先级:** 🔴 > 🟡 > 🔵 > 🟢 > ⚫️
 
-The green "done" light is **presence-aware**: it only appears when you've actually stepped away (~30s idle), and goes dark the instant you touch the keyboard — so it never nags you while you work.
+The green "done" light is **presence-aware**: it shows while you're away (~30s idle) and only for work you haven't seen yet — once you touch the keyboard or mouse after a session finished, that session counts as seen and won't re-light the next time you step away. It stays on for as long as you're gone (no timeout), so it's still there when you come back from lunch.
 
-绿色"完成"灯是**感知在场**的：只有当你真正离开（约 30 秒无操作）时才亮，你一碰键盘它立刻熄灭——所以它绝不会在你工作时打扰你。
+绿色"完成"灯是**感知在场**的：你离开时（约 30 秒无操作）才亮，而且只针对你还没看过的结果——会话完成后你只要碰过键盘或鼠标，就算看过了，下次离开不会再亮。你离开多久它就亮多久（没有超时），吃完饭回来它还在。
 
 The same light shows on the menu bar, the Touch Bar Control Strip (no-op on Macs without a Touch Bar), and as a U-shaped glow around the camera notch (no-op on Macs without a notch).
 
@@ -68,7 +68,10 @@ hooks/on-event.sh   (installed into ~/.claude/settings.json)
         │  watched (polled ~1×/sec)
         ▼
 Background app (Swift, no Dock icon, auto-starts at login)
-   ├── StateStore        read / clean session files
+   ├── StateStore        read session files; drop a session when its claude process exits
+   ├── PermissionDetection  stuck at PreToolUse → permission (yellow)
+   ├── IdleDetection     silent after a step, no Stop → done
+   ├── Acknowledgment    done/error you've already seen → dropped; just-finished → flash
    ├── Aggregator        many sessions → one state (pure)
    ├── PresenceMonitor   macOS idle time → present / away
    ├── RateLimitStore    read account-level limit, self-expire
@@ -88,6 +91,25 @@ Background app (Swift, no Dock icon, auto-starts at login)
 When Claude Code hits a usage limit, it fires a `StopFailure` hook with `error: "rate_limit"`. The hook parses the reset time from the message and writes an account-level `ratelimit.json`. The light goes red and stays red until **either** the reset time passes **or** you successfully use Claude again (which covers upgrading / buying credits). The parser understands three reset-time formats: relative ("in 45 mins"), absolute-with-timezone, and absolute-local.
 
 当 Claude Code 撞到用量上限时，会触发 `StopFailure` hook（`error: "rate_limit"`）。hook 从消息里解析出重置时间，写一个账号级的 `ratelimit.json`。灯变红并保持，直到**重置时间到了**、**或**你重新成功使用 Claude（覆盖了升级 / 购买额度的情况）。解析器支持三种重置时间格式：相对（"in 45 mins"）、带时区的绝对时间、本地绝对时间。
+
+### Light rules in detail · 亮灯规则细节
+
+- **Session lifetime · 会话生命周期.** The hook records the pid of the Claude Code process that owns each session; the app keeps the session exactly as long as that process is alive. (Session files without a pid fall back to a 5-minute timeout.)
+  hook 会记录每个会话所属 Claude Code 进程的 pid，app 让会话与该进程同生共死。（没有 pid 的旧文件按 5 分钟超时处理。）
+- **Inline permission prompts → yellow · 内联授权提示 → 黄灯.** Inline "allow this tool?" prompts often fire no `Notification` hook. A session that has sat at `PreToolUse` for more than 12s without the tool completing is treated as waiting for permission. Trade-off: a single tool that runs longer than 12s also reads yellow until it finishes.
+  终端里的"allow this tool?"内联提示常常不触发 `Notification` hook。会话停在 `PreToolUse` 超过 12 秒、工具还没完成，就视为在等授权。代价：单个工具运行超过 12 秒时，在它结束前也会显示黄灯。
+- **Idle without `Stop` → done · 没发 `Stop` 的闲置 → 完成.** `Stop` is the only event that ends a turn. A session that finished a step (`PostToolUse` / `SubagentStop` / `UserPromptSubmit`) and then stayed silent for more than 20s is treated as done, so the light doesn't stay stuck on blue.
+  `Stop` 是唯一表示一轮结束的事件。会话做完一步（`PostToolUse` / `SubagentStop` / `UserPromptSubmit`）后静默超过 20 秒，就视为完成，避免灯卡在蓝色。
+- **Seen = input after it finished · 已读 = 完成后有过操作.** Keyboard/mouse input after a done session finished (4s grace) or an error session failed (10s grace) marks it as seen. A just-finished session flashes green for 4s even while you're at the keyboard.
+  done 会话完成后（宽限 4 秒）、error 会话失败后（宽限 10 秒）你有过键盘或鼠标操作，就算已读。刚完成的会话即使你在场也会闪 4 秒绿灯。
+- **Failures → red · 失败 → 红灯.** Any `StopFailure` other than a rate limit marks that session as error.
+  限流以外的 `StopFailure` 会把该会话标为 error。
+- **Notch · 刘海.** The outline sits just below the physical camera housing (anything drawn inside the notch band is hidden by hardware), targets whichever screen has a notch, and rebuilds when displays or scaling change.
+  描边画在摄像头外壳正下方（画进刘海区域内的部分会被硬件挡住），自动选择带刘海的屏幕，并在显示器或缩放变化时重建。
+
+All thresholds live in `ClaudeSignalCore` as named defaults (`PermissionDetection.defaultThreshold`, `IdleDetection.defaultThreshold`, `Acknowledgment.doneGrace` / `errorGrace`).
+
+所有阈值都是 `ClaudeSignalCore` 里的具名默认值（`PermissionDetection.defaultThreshold`、`IdleDetection.defaultThreshold`、`Acknowledgment.doneGrace` / `errorGrace`）。
 
 ---
 
@@ -109,9 +131,9 @@ The binary is unsigned (no Apple Developer account). If macOS blocks it, right-c
 
 ## Install (from source) · 安装（从源码）
 
-Requires macOS 13+ and a full Xcode toolchain (not just Command Line Tools).
+Requires macOS 13+ and a Swift 6 toolchain — Command Line Tools are enough to build and install. (Running the XCTest suite needs full Xcode; see Develop.)
 
-需要 macOS 13+ 和完整的 Xcode 工具链（不能只装 Command Line Tools）。
+需要 macOS 13+ 和 Swift 6 工具链——只装 Command Line Tools 就能构建和安装。（运行 XCTest 测试需要完整 Xcode，见"开发"。）
 
 ```bash
 git clone <repo> && cd claude-signal
@@ -128,19 +150,23 @@ bash scripts/install-launchagent.sh   # build release + auto-start at login · �
 ## Develop · 开发
 
 ```bash
-swift test                                          # core unit tests · 核心单元测试 (57)
-bash hooks/tests/test-on-event.sh                   # hook script tests · hook 脚本测试 (19)
+swift test                                          # core unit tests · 核心单元测试 (76; needs full Xcode · 需完整 Xcode)
+bash hooks/tests/test-on-event.sh                   # hook script tests · hook 脚本测试 (22)
 swift run ClaudeSignal --simulate working,done away # headless light-resolution check · 无界面解析检查
 swift run ClaudeSignal                              # run the app in the foreground · 前台运行 app
 ```
 
-`--simulate` resolves the final light from fake states without any UI or Claude — handy for testing the logic:
+`--simulate` runs fake sessions through the app's real decision pipeline (permission and idle detection, seen rule, flash, network override) without any UI or Claude, so it prints exactly what the app would show. Each session is `state[@event][:age]` (age in seconds, default 60); presence is `present`, `away`, or `idle=<seconds since last input>`:
 
-`--simulate` 不依赖任何 UI 或 Claude，从假状态解析出最终的灯——方便测逻辑：
+`--simulate` 不依赖任何 UI 或 Claude，把假会话送进 app 真实的判定流程（授权/闲置检测、已读规则、闪烁、断网覆盖），输出的就是 app 实际会显示的灯。每个会话写成 `state[@event][:age]`（age 单位秒，默认 60）；在场状态写 `present`、`away` 或 `idle=<距上次操作的秒数>`：
 
 ```bash
-$ swift run ClaudeSignal --simulate working away
-aggregate=working presence=away -> display=working
+$ swift run ClaudeSignal --simulate working@PreToolUse:15 present
+sessions=[working@PreToolUse:15s] idle=0s -> display=permission
+$ swift run ClaudeSignal --simulate working@SubagentStop:30 idle=100
+sessions=[working@SubagentStop:30s] idle=100s -> display=done
+$ swift run ClaudeSignal --simulate done:2 present
+sessions=[done:2s] idle=0s -> display=done
 ```
 
 ---
@@ -173,6 +199,7 @@ rm -f "$HOME/.local/bin/claude-signal"
 - ✅ **Phase 2** — Touch Bar Control Strip · Touch Bar 控制条
 - ✅ **Usage-limit red light** · 用量上限红灯
 - ✅ **Phase 3** — notch outline light: a U-shaped glow around the camera notch on notch Macs (no-op on others) · 刘海描边灯：带刘海的 Mac 上沿摄像头刘海一圈 U 形辉光（无刘海机器自动跳过）
+- ✅ **Smarter light rules** — yellow for inline prompts, no stuck blue, green/yellow persist until seen, failures go red, Core Animation (~0.4% CPU) · 更聪明的灯语：内联提示变黄、不再卡蓝、绿/黄灯保持到你看过、失败变红、Core Animation（约 0.4% CPU）
 
 Full design lives in `docs/superpowers/specs/`. Inspired by [starlight36/vibecoding-signal-light](https://github.com/starlight36/vibecoding-signal-light), which drives a *physical* USB traffic light — this project replaces it with the Mac's own built-in surfaces.
 
