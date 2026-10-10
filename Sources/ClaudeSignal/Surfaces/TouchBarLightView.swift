@@ -1,8 +1,8 @@
 import AppKit
 
 /// A small Touch Bar view that draws a single rounded "light" in a color + alpha.
-/// `setLight` updates the appearance and triggers a redraw; the surface drives it
-/// from an animation timer (mirroring the menu-bar dot).
+/// `setLight` redraws once per state change; brightness animation runs on the
+/// layer via LightLayerAnimator.
 @MainActor
 final class TouchBarLightView: NSView {
     private var fillColor: NSColor = .clear
@@ -10,7 +10,7 @@ final class TouchBarLightView: NSView {
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
-        wantsLayer = true   // layer-backed: cheaper redraws for the ~30fps animation
+        wantsLayer = true   // layer-backed: LightLayerAnimator animates its opacity
     }
 
     @available(*, unavailable)

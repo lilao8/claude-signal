@@ -10,6 +10,11 @@ public enum LightAnimationKind: Equatable, Sendable {
 /// Pure animation math, shared by every surface so the visual timing is identical
 /// and the (otherwise GUI-buried) alpha computation is unit-testable.
 public enum LightAnimation {
+    /// Breathe oscillates between this and 1.0; flash alternates 1.0 / `flashLow`.
+    /// Shared with the Core Animation driver so the curve has one source of truth.
+    public static let breatheMin: Double = 0.35
+    public static let flashLow: Double = 0.15
+
     public static func kind(for state: DisplayState) -> LightAnimationKind {
         switch state {
         case .off, .done:          return .steady
@@ -41,9 +46,9 @@ public enum LightAnimation {
     public static func alpha(elapsed: TimeInterval, period: TimeInterval, ease: Bool) -> Double {
         let phase = (elapsed.truncatingRemainder(dividingBy: period)) / period  // 0..1
         if ease {
-            return 0.35 + 0.65 * (0.5 - 0.5 * cos(2 * .pi * phase))
+            return breatheMin + (1 - breatheMin) * (0.5 - 0.5 * cos(2 * .pi * phase))
         } else {
-            return phase < 0.5 ? 1.0 : 0.15
+            return phase < 0.5 ? 1.0 : flashLow
         }
     }
 }

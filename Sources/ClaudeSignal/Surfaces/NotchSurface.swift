@@ -2,7 +2,7 @@ import AppKit
 import ClaudeSignalCore
 
 /// Renders the light as a U-shaped glow around the camera notch.
-/// Mirrors TouchBarSurface's render/animation logic, sharing LightAnimation.
+/// Draws once per state; breathe/flash runs via `LightLayerAnimator` (shared timing).
 ///
 /// Targets whichever screen actually HAS a notch (not `NSScreen.main`, which is the screen
 /// with the key window — an external display at launch used to disable the notch surface
@@ -13,7 +13,6 @@ import ClaudeSignalCore
 final class NotchSurface: SignalSurface {
     private var window: NSWindow?
     private var outlineView: NotchOutlineView?
-    private var timer: Timer?
     private var current: DisplayState?
     private var screenObserver: NSObjectProtocol?
 
@@ -30,7 +29,6 @@ final class NotchSurface: SignalSurface {
 
     /// (Re)create the overlay window on the notched screen, then replay the current state.
     private func rebuild() {
-        timer?.invalidate(); timer = nil
         window?.orderOut(nil)
         window = nil
         outlineView = nil
@@ -74,31 +72,8 @@ final class NotchSurface: SignalSurface {
     func render(_ state: DisplayState) {
         guard state != current else { return }
         current = state                          // remembered for replay after a rebuild
-        timer?.invalidate(); timer = nil
         guard let outlineView else { return }    // no notched screen right now
-
-        let color = Appearance.color(for: state)
-        guard let config = LightAnimation.config(for: state) else {
-            outlineView.setLight(color: color, alpha: state == .off ? 0 : 1)
-            return
-        }
-        startTimer(period: config.period, color: color, ease: config.ease)
-    }
-
-    private func startTimer(period: TimeInterval, color: NSColor, ease: Bool) {
-        guard outlineView != nil else { return }   // no-op on non-notch Macs
-        let start = Date()
-        let t = Timer(timeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
-            let elapsed = Date().timeIntervalSince(start)
-            let alpha = LightAnimation.alpha(elapsed: elapsed, period: period, ease: ease)
-            // Timer fires on the main run loop; assumeIsolated avoids a Sendable crossing
-            // for the non-Sendable NSColor capture. Drive the view through self so a
-            // torn-down surface stops updating (parity with TouchBarSurface).
-            MainActor.assumeIsolated {
-                self?.outlineView?.setLight(color: color, alpha: alpha)
-            }
-        }
-        RunLoop.main.add(t, forMode: .common)
-        timer = t
+        outlineView.setLight(color: Appearance.color(for: state), alpha: state == .off ? 0 : 1)
+        LightLayerAnimator.apply(state, to: outlineView.layer)
     }
 }

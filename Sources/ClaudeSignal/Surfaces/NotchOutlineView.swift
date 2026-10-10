@@ -1,8 +1,8 @@
 import AppKit
 
 /// Draws a U-shaped glowing outline (left + rounded bottom + right; no top) inside its
-/// bounds. `setLight(color:alpha:)` updates appearance; the surface drives it from an
-/// animation timer (mirrors TouchBarLightView). Tunable style constants are here so a
+/// bounds. `setLight(color:alpha:)` redraws once per state change; brightness animation
+/// runs on the layer via LightLayerAnimator. Tunable style constants are here so a
 /// user can re-style by editing one line.
 @MainActor
 final class NotchOutlineView: NSView {
@@ -17,7 +17,7 @@ final class NotchOutlineView: NSView {
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
-        wantsLayer = true   // layer-backed: cheaper redraws for the ~30fps animation
+        wantsLayer = true   // layer-backed: LightLayerAnimator animates its opacity
     }
 
     @available(*, unavailable)
