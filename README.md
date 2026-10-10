@@ -8,23 +8,10 @@ A tiny native macOS "traffic light" for **Claude Code** state — shown on the m
 >
 > Claude Code 的任务常常要跑好几分钟。你切走去忙别的，就会错过它完成、要权限、或卡住的那一刻。claude-signal 把状态放在你余光所及之处。
 
-<!--
-  📸 SCREENSHOTS / 截图 — replace these placeholders with real captures.
-  Suggested shots (put files under docs/images/ and update the paths below):
-    1. demo.gif      — a short screen recording cycling through states:
-                       blue breathing → yellow flashing → green steady → off.
-                       Capture the menu-bar dot AND the Touch Bar together if possible.
-                       (macOS: Cmd-Shift-5 to record a region; convert to GIF.)
-    2. menubar.png   — close-up of the menu-bar dot in each color.
-    3. touchbar.png  — the Touch Bar Control Strip dot (screenshot the Touch Bar via
-                       `Cmd-Shift-6`, or photograph it).
-    4. red-limit.png — the red light when a usage limit is hit.
--->
-
 <p align="center">
-  <img src="docs/images/demo.gif" alt="claude-signal cycling through states on the menu bar and Touch Bar" width="640">
+  <img src="docs/images/demo.gif" alt="The notch light cycling through working, permission, done, error and off" width="404">
   <br>
-  <em>Demo placeholder — record a short GIF cycling blue → yellow → green → off. · 演示占位，录一段蓝→黄→绿→灭的短 GIF。</em>
+  <em>Real screen recording on an M5 Pro MacBook Pro: working → permission → done → error → off. Screen captures don't contain the physical camera notch, so it's drawn in black. · M5 Pro MacBook Pro 实录：工作中 → 等授权 → 完成 → 出错 → 空闲。截图里没有物理刘海，黑色刘海为叠加示意。</em>
 </p>
 
 ---
@@ -38,6 +25,10 @@ A tiny native macOS "traffic light" for **Claude Code** state — shown on the m
 | 🔴 **Flashing red** | Something's wrong: a turn failed (API error, overload…), network down while working, **or a usage limit was hit** | 出问题了：某轮失败（API 报错、过载…）、工作时断网，**或撞到用量上限** |
 | 🟢 **Steady green** | Done and you haven't looked yet — shown while you're away; also a 4s flash the moment a turn finishes | 做完了且你还没看——你离开时显示；一轮刚结束时也会闪 4 秒 |
 | ⚫️ **Off** | Your turn, or nothing happening (menu bar shows a faint hollow ring — no ring means the app isn't running) | 轮到你了，或什么都没发生（菜单栏显示淡灰空心圈——没有圈说明 app 没在跑） |
+
+<p align="center">
+  <img src="docs/images/states.png" alt="Each state on the notch and the menu-bar dot" width="425">
+</p>
 
 **Priority when several sessions run at once · 多会话同时运行时的优先级:** 🔴 > 🟡 > 🔵 > 🟢 > ⚫️
 
